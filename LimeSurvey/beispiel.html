@@ -1,0 +1,46 @@
+<html>
+<head>
+<link href="./css/botchat_t1.css" rel="stylesheet" />
+<meta charset="UTF-8">
+<title> </title>
+</head>
+<body>
+<div>
+<div id="bot"></div>
+
+<script src="https://ratestbot123.azurewebsites.net"></script>
+
+<script>
+var params = BotChat.queryParams(location.search);
+var user = {
+id: params["userId"] || 'user',
+name: 'Du'
+};
+
+var botConnection = new BotChat.DirectLine({
+secret: 'gEhdp5OpmP0.cwA.BTU.KhaAI6r0Ay72nO5DEgsA5XYx2GLWafFMwmydG0nFvdA',
+user: user
+});
+
+BotChat.App({
+    user: user,
+    botConnection: botConnection,
+    bot: { id: 'bot', name: 'Chatbot' },
+    resize: 'detect',
+    locale: 'de-de',
+    showUploadButton: false
+}, document.getElementById("bot"));
+
+botConnection.postActivity({
+    from: user,
+    name: 'requestWelcomeDialog',
+    type: 'event',
+    value: ''
+}).subscribe(function (id) {
+    console.log('"trigger requestWelcomeDialog" sent');
+});
+
+</script>
+</div>
+</body>
+</html>

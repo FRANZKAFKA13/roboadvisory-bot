@@ -1,0 +1,197 @@
+﻿{
+    "type": "AdaptiveCard",
+    "body": [
+        {
+            "type": "TextBlock",
+            "size": "Medium",
+            "weight": "Bolder",
+            "text": "Faktenblatt: ACG GmbH"
+        },
+        {
+            "type": "Container",
+            "items": [
+                {
+                    "type": "TextBlock",
+                    "horizontalAlignment": "Center",
+                    "weight": "Bolder",
+                    "text": "Kennzahlen",
+                    "wrap": true
+                },
+                {
+                    "type": "ColumnSet",
+                    "columns": [
+                        {
+                            "type": "Column",
+                            "items": [
+                                {
+                                    "type": "Container",
+                                    "items": [
+                                        {
+                                            "type": "ColumnSet",
+                                            "columns": [
+                                                {
+                                                    "type": "Column",
+                                                    "items": [
+                                                        {
+                                                            "type": "TextBlock",
+                                                            "weight": "Bolder",
+                                                            "text": "Jahr"
+                                                        },
+                                                        {
+                                                            "type": "TextBlock",
+                                                            "weight": "Bolder",
+                                                            "text": "Umsatz"
+                                                        },
+                                                        {
+                                                            "type": "TextBlock",
+                                                            "weight": "Bolder",
+                                                            "text": "EBITDA (bereinigt)"
+                                                        },
+                                                        {
+                                                            "type": "TextBlock",
+                                                            "weight": "Bolder",
+                                                            "text": "Reingewinn"
+                                                        },
+                                                        {
+                                                            "type": "TextBlock",
+                                                            "weight": "Bolder",
+                                                            "text": "Kapitalaufwend."
+                                                        },
+                                                        {
+                                                            "type": "TextBlock",
+                                                            "weight": "Bolder",
+                                                            "text": "Cashflow"
+                                                        }
+                                                    ],
+                                                    "width": "stretch"
+                                                },
+                                                {
+                                                    "type": "Column",
+                                                    "items": [
+                                                        {
+                                                            "type": "TextBlock",
+                                                            "horizontalAlignment": "Right",
+                                                            "weight": "Bolder",
+                                                            "text": "Q2 2018"
+                                                        },
+                                                        {
+                                                            "type": "TextBlock",
+                                                            "horizontalAlignment": "Right",
+                                                            "text": "16.351.220 €"
+                                                        },
+                                                        {
+                                                            "type": "TextBlock",
+                                                            "horizontalAlignment": "Right",
+                                                            "text": "2.398.220 €"
+                                                        },
+                                                        {
+                                                            "type": "TextBlock",
+                                                            "horizontalAlignment": "Right",
+                                                            "text": "934.901 €"
+                                                        },
+                                                        {
+                                                            "type": "TextBlock",
+                                                            "horizontalAlignment": "Right",
+                                                            "text": "819.127 €"
+                                                        },
+                                                        {
+                                                            "type": "TextBlock",
+                                                            "horizontalAlignment": "Right",
+                                                            "text": "1.677.629 €"
+                                                        }
+                                                    ],
+                                                    "width": "stretch"
+                                                },
+                                                {
+                                                    "type": "Column",
+                                                    "items": [
+                                                        {
+                                                            "type": "TextBlock",
+                                                            "horizontalAlignment": "Right",
+                                                            "weight": "Bolder",
+                                                            "text": "Q2 2017"
+                                                        },
+                                                        {
+                                                            "type": "TextBlock",
+                                                            "horizontalAlignment": "Right",
+                                                            "text": "15.616.640 €"
+                                                        },
+                                                        {
+                                                            "type": "TextBlock",
+                                                            "horizontalAlignment": "Right",
+                                                            "text": "2.360.185 €"
+                                                        },
+                                                        {
+                                                            "type": "TextBlock",
+                                                            "horizontalAlignment": "Right",
+                                                            "text": "901.275 €"
+                                                        },
+                                                        {
+                                                            "type": "TextBlock",
+                                                            "horizontalAlignment": "Right",
+                                                            "text": "784.555 € "
+                                                        },
+                                                        {
+                                                            "type": "TextBlock",
+                                                            "horizontalAlignment": "Right",
+                                                            "text": "1.626.567 €"
+                                                        }
+                                                    ],
+                                                    "width": "stretch"
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ],
+                            "width": "stretch"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "Container",
+            "items": [
+                {
+                    "type": "Container",
+                    "items": [
+                        {
+                            "type": "TextBlock"
+                        }
+                    ]
+                },
+                {
+                    "type": "TextBlock",
+                    "horizontalAlignment": "Left",
+                    "weight": "Bolder",
+                    "text": "Dividende"
+                },
+                {
+                    "type": "TextBlock",
+                    "text": "Die ACG GmbH schüttet keine Dividende aus."
+                },
+                {
+                    "type": "TextBlock",
+                    "weight": "Bolder",
+                    "text": "Prognose für die Halbleiterindustrie (2019)"
+                },
+                {
+                    "type": "TextBlock",
+                    "text": "2019 wird das makroökonomische Umfeld der Halbleiterindustrie\nweiterhin von moderatem globalem Wachstum geprägt sein.\nDie Volatilität von Rohstoffen und Währungen bleibt bestehen.\n\n\nDie Unternehmen der Halbleiterindustrie werden 2019 steigenden\nRohstoffkosten ausgesetzt sein. Dies wird sich voraussichtlich\nin einer Erhöhung der Verkaufspreise niederschlagen."
+                },
+                {
+                    "type": "TextBlock",
+                    "weight": "Bolder",
+                    "text": "Prognose für die ACG GmbH (2019)"
+                },
+                {
+                    "type": "TextBlock",
+                    "text": "Die ACG GmbH glaubt, ihr in 2018 angekündigtes Ziel von\n4,7 Mio. € EBITDA (bereinigt) in 2019 zu erreichen"
+                }
+            ]
+        }
+    ],
+    "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+    "version": "1.0"
+}
