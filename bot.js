@@ -231,6 +231,12 @@ const treatment = {
     apologizePraise: false,
 }
 
+
+
+
+
+
+
 // If this is activated, each dialog can be selected independently
 const testing = false;
 
@@ -256,11 +262,20 @@ class MyBot {
 
         // Properties for UserState   
         this.welcomedUserProperty = userState.createProperty(WELCOMED_USER);  
-        this.userData = userState.createProperty(USER_DATA_PROPERTY);
+        //this.userData = userState.createProperty(USER_DATA_PROPERTY);
         this.riskData = userState.createProperty(RISK_DATA_PROPERTY);
         this.investmentData = userState.createProperty(INVESTMENT_DATA_PROPERTY);
         
-        
+        this.changes = {};
+        this.userID = "";
+        this.userData = {
+            name: "",
+            age: "",
+            gender: "",
+            education: "",
+            major: "",
+            eTag: '*',
+        } 
 
         // Add prompts that will be used in dialogs
         this.dialogSet = dialogSet;
@@ -369,7 +384,21 @@ class MyBot {
     // Function for welcoming user
     async welcomeUser (step) {
         console.log("Welcome User Dialog");
-        //step.context.sendActivity({ type: ActivityTypes.Typing});
+
+        // Read userData object
+        try {
+            var user = await this.memoryStorage.read([this.userID]);
+        }
+        catch(e) {console.log(e)}
+
+        // Create UserData object and save it to DB if the user is new
+        if(isEmpty(user)) {
+            this.changes[this.userID] = this.userData;
+            await this.memoryStorage.write(this.changes);
+        }
+        
+
+        
             
                   
         // Welcome the user
@@ -394,12 +423,15 @@ class MyBot {
     // Functions for creating UserProfile 
         async promptForName (step) {
             console.log("Name Prompt");
-            // Retrieve user object from UserState storage
-            const user = await this.userData.get(step.context, {});
+            
+            // Read UserData from DB
+            var user = await this.memoryStorage.read([this.userID]);
+            console.log(user);
+
 
             // Before prompting, check if value already exists
-            if(!user.name){
-                if (user.deleted == true) {
+            if(!user[this.userID].name){
+                if (user[this.userID].deleted == true) {
                         
                         if (treatment.selfReference == true) {
                             var msg = "Ich stelle dir nun die gleichen Fragen erneut.";
@@ -426,26 +458,28 @@ class MyBot {
                 return await step.next();
             }
         }
+
         async promptForAge (step) {
             console.log("Age Prompt");
-            // Retrieve user object from UserState storage
-            const user = await this.userData.get(step.context, {});
+            // Read UserData from DB
+            var user = await this.memoryStorage.read([this.userID]);
             console.log(user);
+
             // Before saving entry, check if it already exists
-            if(!user.name){
-                user.name = step.result;
-                // Give user object back to UserState storage
-                await this.userData.set(step.context, user);
+            if(!user[this.userID].name) {
+                user[this.userID].name = step.result;
+                // Write userData to DB
+                this.changes[this.userID] = user[this.userID];
+                await this.memoryStorage.write(this.changes);
+
                 // Notify user about his name being remembered
                 if (treatment.rememberName == true) {
-                    var msg = `Hallo **${user.name}**! Danke, dass du mir deinen Namen verraten hast. Ich werde ihn mir ab jetzt merken.`;
+                    var msg = `Hallo **${user[this.userID].name}**! Danke, dass du mir deinen Namen verraten hast. Ich werde ihn mir ab jetzt merken.`;
                     await sendWithDelay(msg, step);
                 }
             }
             // Before prompting, check if value already exists
-            if(!user.age){
-
-                console.log(user);
+            if(!user[this.userID].age) {
                 await delay(userData.age.prompt, step).then(async function() { 
                     return await step.prompt('textPrompt', userData.age.prompt);
                 });
@@ -457,17 +491,19 @@ class MyBot {
         async promptForGender (step) {
 
             console.log("Gender Prompt");
-            // Retrieve user object from UserState storage
-            const user = await this.userData.get(step.context, {});
+            // Read UserData from DB
+            var user = await this.memoryStorage.read([this.userID]);
             console.log(user);
+
             // Before saving entry, check if it already exists
-            if(!user.age){
+            if(!user[this.userID].age){
                 // Validate entered age
                 let validated = await userData.age.validate(step)
                 if (validated){
-                    user.age = userData.age.recognize(step);
-                    // Give user object back to UserState storage
-                    await this.userData.set(step.context, user);
+                    user[this.userID].age = userData.age.recognize(step);
+                    // Write userData to DB
+                    this.changes[this.userID] = user[this.userID];
+                    await this.memoryStorage.write(this.changes);
 
                 } else if (!validated) {
                     // Prompt for age again
@@ -475,7 +511,7 @@ class MyBot {
                 }
             } 
             // Before prompting, check if value already exists
-            if(!user.gender){
+            if(!user[this.userID].gender){
                 // Call Gender Prompt
                 await delay(userData.gender.prompt, step).then(async function() { 
                     return await step.prompt('textPrompt', userData.gender.prompt);
@@ -488,13 +524,15 @@ class MyBot {
         async promptForEducation (step) {
             console.log("Education Prompt");
            
-            // Retrieve user object from UserState storage
-            const user = await this.userData.get(step.context, {});
+            // Read UserData from DB
+            var user = await this.memoryStorage.read([this.userID]);
+            console.log(user);
+
             // Before saving entry, check if it already exists
-            if(!user.gender){
+            if(!user[this.userID].gender){
                 var validation = await validateInput(step.result, genders);
                 if (validation) {
-                    user.gender = validation;
+                    user[this.userID].gender = validation;
                 } else {
                     if(treatment.selfReference == true) { var msg = "Sorry, das habe ich nicht verstanden. Bitte versuche es erneut." }
                     else { var msg = "Die Eingabe wurde nicht erkannt. Versuche es erneut."}
@@ -502,14 +540,13 @@ class MyBot {
                     return await step.replaceDialog('createProfile');
                 }
                 
-                // Give user object back to UserState storage
-                await this.userData.set(step.context, user);
-                console.log(user);
+                // Write userData to DB
+                this.changes[this.userID] = user[this.userID];
+                await this.memoryStorage.write(this.changes);
             }
             // Before prompting, check if value already exists
-            if (!user.education){
-                const user = await this.userData.get(step.context, {});
-                console.log(user);
+            if (!user[this.userID].education) {
+
                 // Prompt for highest education with list of education options
                 await delay(userData.education.prompt, step).then(async function() { 
                     return await step.prompt('textPrompt', userData.education.prompt);
@@ -520,14 +557,15 @@ class MyBot {
         }
         async promptForMajor (step) {
             console.log("Major Prompt");
-            // Retrieve user object from UserState storage
-            const user = await this.userData.get(step.context, {});
+            // Read UserData from DB
+            var user = await this.memoryStorage.read([this.userID]);
             console.log(user);
+
             // Before saving entry, check if it already exists
-            if(!user.education){
+            if(!user[this.userID].education){
                 var validation = await validateInput(step.result, educations);
                 if (validation) {
-                    user.education = validation;
+                    user[this.userID].education = validation;
                 } else {
                     if(treatment.selfReference == true) { var msg = "Sorry, das habe ich nicht verstanden. Bitte versuche es erneut." }
                     else { var msg = "Die Eingabe wurde nicht erkannt. Versuche es erneut."}
@@ -536,12 +574,12 @@ class MyBot {
                     return await step.replaceDialog('createProfile');
                 }
                 
-                // Give user object back to UserState storage
-                await this.userData.set(step.context, user);
-                console.log(user);
+                // Write userData to DB
+                this.changes[this.userID] = user[this.userID];
+                await this.memoryStorage.write(this.changes);
             }
             // Before prompting, check if value already exists
-            if (!user.major){
+            if (!user[this.userID].major){
                 await delay(userData.major.prompt, step).then(async function() { 
                     return await step.prompt('textPrompt', userData.major.prompt);
                 });
@@ -552,15 +590,20 @@ class MyBot {
         
         async completeProfile (step) {
             console.log("Complete");
-            // Retrieve user object from UserState storage
-            const user = await this.userData.get(step.context, {});
+            // Read UserData from DB
+            var user = await this.memoryStorage.read([this.userID]);
+            console.log(user);
+
             // Before saving entry, check if it already exists
-            if (!user.major){
+            if (!user[this.userID].major){
                 var validation = await validateInput(step.result, majors);
                 if (validation) {
-                    user.major = validation;
-                    // Give user object back to UserState storage
-                    await this.userData.set(step.context, user);
+                    user[this.userID].major = validation;
+
+                    // Write userData to DB
+                    this.changes[this.userID] = user[this.userID];
+                    await this.memoryStorage.write(this.changes);
+
                 } else {
                     if(treatment.selfReference == true) { var msg = "Sorry, das habe ich nicht verstanden. Bitte probiere einen der folgenden Studiengänge:" }
                     else { var msg = "Die Eingabe wurde nicht erkannt. Probiere einen Studiengang folgender Liste: "}
@@ -581,40 +624,50 @@ class MyBot {
                     return await step.replaceDialog('createProfile');
                 }
             }
-            if (!user.complete){
-                user.complete = true;
-                // Give user object back to UserState storage
-                await this.userData.set(step.context, user);
+            if (!user[this.userID].complete){
+                console.log('test1');
+                // Read UserData from DB
+                var user = await this.memoryStorage.read([this.userID]);
+                // Set user to complete
+                user[this.userID].complete = true;
+                // Write userData to DB
+                this.changes[this.userID] = user[this.userID];
+                await this.memoryStorage.write(this.changes);
+                console.log('test2');
                 if (treatment.rememberName == true) {
-                    var msg = `Super **${user.name}**, dein Profil ist nun vollständig. Danke für deine Mitarbeit.`;
+                    var msg = `Super **${user[this.userID].name}**, dein Profil ist nun vollständig. Danke für deine Mitarbeit.`;
                 } else {
                     var msg = `Super, dein Profil ist nun vollständig.`;
                 }
                 await sendWithDelay(msg, step);
             } else {
-                var msg = `**${user.name}**, du hast dein Profil bereits ausgefüllt.`;
+                console.log('test3');
+                var msg = `**${user[this.userID].name}**, du hast dein Profil bereits ausgefüllt.`;
                 await sendWithDelay(msg, step);
             }
             if (testing == true) {
                 // Return to main dialog                
                 return await step.beginDialog('mainMenu');
             } else {
+                console.log('test4');
                 return await step.beginDialog('displayProfile');
             }
         }
 
         // Function for displaying user profile
         async displayProfile (step) {
-            // Retrieve user object from UserState storage
-            const user = await this.userData.get(step.context, {});
+            console.log("Display Profile");
+            // Read UserData from DB
+            var user = await this.memoryStorage.read([this.userID]);
+
             // If Profile not completed, end dialog and return to main menu
-            if (!user.complete){
+            if (!user[this.userID].complete){
                 var msg = "Dein Profil ist noch nicht vollständig.";
                 await sendWithDelay(msg, step);
                 return await step.replaceDialog('createProfile');
             }
             // Create array from individual user data
-            var userArr = Object.values(user);
+            var userArr = Object.values(user[this.userID]);
             console.log(userArr);
             var i = 0;
             // Iterate through user data and create string
@@ -664,17 +717,26 @@ class MyBot {
 
         // Function for deleting user profile
         async deleteProfile (step) {
-            // Retrieve user object from UserState storage
-            const user = await this.userData.get(step.context, {});
+            console.log("Delete Profile");
+            
+            // Read UserData from DB
+            var user = await this.memoryStorage.read([this.userID]);
+
+            // Save ID to use it in next method
+            var idTemp = this.userID;
+
             // Iterate through user data and delete entries
-            Object.keys(user).forEach(function(key) {
-                user[key] = "";
+            Object.keys(user[idTemp]).forEach(function(key) {
+                user[idTemp][key] = "";
             })
             // Clear "complete" Tag
-            user.complete = false;
-            user.deleted = true;
-            // Give user object back to UserState storage
-            await this.userData.set(step.context, user);
+            user[this.userID].complete = false;
+            user[this.userID].deleted = true;
+
+            // Write userData to DB
+            this.changes[this.userID] = user[this.userID];
+            await this.memoryStorage.write(this.changes);
+
             // End dialog
             var msg = "Dein Profil wurde gelöscht."
             await sendWithDelay(msg, step);
@@ -1335,26 +1397,26 @@ class MyBot {
         }
 
         async startBot (step) {
-            console.log("Bot waiting for user to start");
-            // Retrieve user object from UserState storage
-            const user = await this.userData.get(step.context, {});
-    
+            console.log("Bot waiting for user to start");    
             return await step.prompt('textPrompt', "");
         }
 
         async startDialog (step) {
-            // Retrieve user object from UserState storage
-            const user = await this.userData.get(step.context, {});
-            
+            // Read UserData from DB
+            var user = await this.memoryStorage.read([this.userID]);
+
             try{ var firstUserMessage = step.result }
             catch(e) { console.log(e) }
 
             console.log("First user message: " + firstUserMessage);
             if (firstUserMessage.toLowerCase() == "start") {
                 console.log("Bot Started by user");
-                if (user.name) {
-                    await step.context.sendActivity(`Hinweis: Nutzer ${user.name} erkannt.`)
+                try { 
+                    if (user[this.userID].name) {
+                        await step.context.sendActivity(`Hinweis: Nutzer ${user[this.userID].name} erkannt.`);
+                    }
                 }
+                catch(e) { console.log("Nutzer ist neu") }
                 return await step.replaceDialog("welcome");
             } else {
                 return await step.replaceDialog("startBot");
@@ -1394,9 +1456,14 @@ class MyBot {
                     if (turnContext.activity.membersAdded[idx].id !== turnContext.activity.recipient.id) {
                         
                         // Funktionierender Code, wenn WebChat gefixt
+                        console.log("User added");
+                        this.userID = turnContext.activity.membersAdded[idx].id;
+                        console.log("UserID: " + this.userID);
+                        
+                        
 
                         /* // Start the dialog.
-                        console.log("User added");
+                        
                         
                         // Read UserState. If the 'DidBotWelcomedUser' does not exist (first time ever for a user) set the default to false.
                         const didBotWelcomeUser = await this.welcomedUserProperty.get(turnContext, false);
@@ -1425,9 +1492,6 @@ class MyBot {
                         } else {
                             await dc.beginDialog('startBot');
                         }
-                        
-                        
-
                     }
                     if (turnContext.activity.membersAdded[idx].id === turnContext.activity.recipient.id) {
                         // Start the dialog.
@@ -1630,4 +1694,13 @@ function validateInput(input, obj) {
     }
     
     return match[0];
+}
+
+// Check if Object is empty
+function isEmpty(obj) {
+    for(var key in obj) {
+        if(obj.hasOwnProperty(key))
+            return false;
+    }
+    return true;
 }
