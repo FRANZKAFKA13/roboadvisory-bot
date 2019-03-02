@@ -232,11 +232,6 @@ const treatment = {
 }
 
 
-
-
-
-
-
 // If this is activated, each dialog can be selected independently
 const testing = false;
 
@@ -263,17 +258,38 @@ class MyBot {
         // Properties for UserState   
         this.welcomedUserProperty = userState.createProperty(WELCOMED_USER);  
         //this.userData = userState.createProperty(USER_DATA_PROPERTY);
-        this.riskData = userState.createProperty(RISK_DATA_PROPERTY);
-        this.investmentData = userState.createProperty(INVESTMENT_DATA_PROPERTY);
+        //this.riskData = userState.createProperty(RISK_DATA_PROPERTY);
+        //this.investmentData = userState.createProperty(INVESTMENT_DATA_PROPERTY);
         
         this.changes = {};
         this.userID = "";
         this.userData = {
+
             name: "",
             age: "",
             gender: "",
             education: "",
             major: "",
+
+            riskData: {
+                roundCounter: "",
+                riskAssessmentComplete: "",
+                riskDescription: "",
+                repeat: "",
+                choices: "",
+            },
+
+            investData: {
+                repeat: "",
+                order: "",
+                choice: "",
+                follow: "",
+                win1: "",
+                win2: "",
+                loss1: "",
+                loss2: "",
+            },
+
             eTag: '*',
         } 
 
@@ -396,9 +412,7 @@ class MyBot {
             this.changes[this.userID] = this.userData;
             await this.memoryStorage.write(this.changes);
         }
-        
-
-        
+              
             
                   
         // Welcome the user
@@ -756,11 +770,12 @@ class MyBot {
         // Functions for Risk Assessment
 
         async presentRiskCards (step) {
-            // Retrieve user object from UserState storage
-            const userRiskData = await this.riskData.get(step.context, {});
+            // Read UserData from DB
+            var user = await this.memoryStorage.read([this.userID]);
+
             // Überprüfen, ob Spiel bereits läuft, falls nicht, neue Runde starten 
-            if (!userRiskData.roundCounter) {
-                userRiskData.roundCounter = 1;
+            if (!user[this.userID].riskData.roundCounter) {
+                user[this.userID].riskData.roundCounter = 1;
                 if (treatment.selfReference == true) {
                     var msg = "Bevor wir uns deinem Investmentportfolio widmen, werde ich zunächst **dein Risikoverhalten** ermitteln."
                 } else {
@@ -789,8 +804,8 @@ class MyBot {
             }
 
             // If RiskAssessment already finished, notify user and go back to main menu
-            if (userRiskData.riskAssessmentComplete == true) {
-                var msg = `Dein Risikoverhalten wurde bereits ermittelt. Du bist **${userRiskData.riskDescription}**.`;
+            if (user[this.userID].riskData.riskAssessmentComplete == true) {
+                var msg = `Dein Risikoverhalten wurde bereits ermittelt. Du bist **${user[this.userID].riskData.riskDescription}**.`;
                 await sendWithDelay(msg, step);
                 if (testing == true) {
                     // Return to main dialog                
@@ -799,21 +814,25 @@ class MyBot {
                     return await step.beginDialog('investmentDecision');
                 }
                 // Only present card, if round is not a repeated round
-            } else if (userRiskData.repeat == true){
-                userRiskData.repeat = false;
+            } else if (user[this.userID].riskData.repeat == true){
+                user[this.userID].riskData.repeat = false;
                 await step.context.sendActivity("");
             } else {
                 // Present Adaptive Card 1-10 for gathering User Input
                 await step.context.sendActivity({
-                    text: `Runde  ${userRiskData.roundCounter}`,
-                    attachments: [CardFactory.adaptiveCard(riskCard[userRiskData.roundCounter])]
+                    text: `Runde  ${user[this.userID].riskData.roundCounter}`,
+                    attachments: [CardFactory.adaptiveCard(riskCard[user[this.userID].riskData.roundCounter])]
                 });
             }
+            // Write userData to DB
+            this.changes[this.userID] = user[this.userID];
+            await this.memoryStorage.write(this.changes);
         }
+
         async assessRisk (step) {
-            // Retrieve user object from UserState storage
-            const userRiskData = await this.riskData.get(step.context, {});
-            const user = await this.userData.get(step.context, {});
+            // Read UserData from DB
+            var user = await this.memoryStorage.read([this.userID]);
+            
             // If user types in message, restart without iterating round counter
             if (step.result) {
                 if (treatment.civility == true) {
@@ -824,13 +843,14 @@ class MyBot {
                 
                 await sendWithDelay(msg, step);
                 // Set repeat flag 
-                userRiskData.repeat = true;
+                user[this.userID].riskData.repeat = true;
                 // Dialog abbrechen und Schritt wiederholen
                 return await step.replaceDialog('riskAssessment');
             }
 
             // Retrieve choice object from Adaptive JSON Card
             var choice = step.context.activity.value;
+            console.log("Hier sollte choice objekt kommen");
             console.log(choice);
                         
             // Key extrahieren, Nummer abschneiden und in Zahl umwandeln (Welche Karte wurde benutzt?)
@@ -845,16 +865,18 @@ class MyBot {
                 
                 await sendWithDelay(msg, step);
                 // Set repeat flag 
-                userRiskData.repeat = true;
+                user[this.userID].riskData.repeat = true;
                 // Dialog abbrechen und Schritt wiederholen
                 return await step.replaceDialog('riskAssessment');
             } else {
                 roundPlayed = parseInt(roundPlayed.substr(6,roundPlayed.length));
             }
             
+            console.log("hello hier sollte round counter kommen:");
+            console.log(user[this.userID].riskData.roundCounter);
 
             // Überprüfen, ob Nutzer eine bereits verwendete Karte benutzt
-            if (roundPlayed < userRiskData.roundCounter) {
+            if (roundPlayed < user[this.userID].riskData.roundCounter) {
                 if (treatment.civility == true) {
                     var msg = `Für Runde ${roundPlayed} hast du bereits eine Wahl getroffen, bitte neuste Runde spielen.`;
                 } else {
@@ -863,12 +885,12 @@ class MyBot {
                 await sendWithDelay(msg, step);
 
                 // Set repeat flag 
-                userRiskData.repeat = true;
+                user[this.userID].riskData.repeat = true;
                 // Dialog abbrechen und Schritt wiederholen
                 return await step.replaceDialog('riskAssessment');
             // Case-Switch nötig, da JSON Cards Output statisch zurückgeben und eine Unterscheidung zwischen den Returns der Karten nötig ist (choice1-10)
             } else {
-                switch (userRiskData.roundCounter) {
+                switch (user[this.userID].riskData.roundCounter) {
                     case 1:
                         choice = choice.choice1;
                         break;
@@ -902,6 +924,10 @@ class MyBot {
                 }
                 
             }
+            console.log("hello hier sollte round counter kommen:");
+            console.log(user[this.userID].riskData.roundCounter);
+            console.log("hello hier sollte choice kommen:");
+            console.log(choice);
             // If user didn't make choice, reprompt
             if (choice.localeCompare("Bitte wählen") == 0) {
                 if (treatment.civility == true) {
@@ -912,75 +938,83 @@ class MyBot {
                 await sendWithDelay(msg, step);
 
                 // Set repeat flag 
-                userRiskData.repeat = true;
+                user[this.userID].riskData.repeat = true;
                 // Dialog abbrechen und Schritt wiederholen
                 return await step.replaceDialog('riskAssessment');
             }
             // Save choice
-            if (!userRiskData.choices) {
+            if (!user[this.userID].riskData.choices) {
                 // Create array if it doesn't exist yet
-                userRiskData.choices = [];
-                userRiskData.choices.push(choice);
+                user[this.userID].riskData.choices = [];
+                user[this.userID].riskData.choices.push(choice);
             } else {
-                userRiskData.choices.push(choice);
+                user[this.userID].riskData.choices.push(choice);
             }
             // Make choice transparent for user
             var msg = `Du hast dich in **Runde ${roundPlayed}** für **Spiel ${choice}** entschieden.`;
             await sendWithDelay(msg, step);
 
-
+           
             // Repeat until all games are played or until B is played
-            if (userRiskData.roundCounter < 10 && !choice.localeCompare("A")) {
-                userRiskData.roundCounter++;
+            if (user[this.userID].riskData.roundCounter < 10 && !choice.localeCompare("A")) {
+                user[this.userID].riskData.roundCounter++;
+
+                // Write userData to DB
+                this.changes[this.userID] = user[this.userID];
+                await this.memoryStorage.write(this.changes);
+
+                // Start next round
                 return await step.replaceDialog('riskAssessment');
             } else {
                 // Tag risk assessment as complete
-                userRiskData.riskAssessmentComplete = true;
+                user[this.userID].riskData.riskAssessmentComplete = true;
                 // Assess risk behavior based on Holt and Laury (2002)
                 // How many safe choices (A) were made by the user?
                 var safeChoices = roundPlayed - 1;
                 switch (safeChoices) {
                     case 0:
-                        userRiskData.riskDescription = "höchst risikoliebend";
+                        user[this.userID].riskData.riskDescription = "höchst risikoliebend";
                         break;
                     case 1:
-                        userRiskData.riskDescription = "höchst risikoliebend";
+                        user[this.userID].riskData.riskDescription = "höchst risikoliebend";
                         break;
                     case 2:
-                        userRiskData.riskDescription = "sehr risikoliebend";
+                        user[this.userID].riskData.riskDescription = "sehr risikoliebend";
                         break;
                     case 3:
-                        userRiskData.riskDescription = "risikoliebend";
+                        user[this.userID].riskData.riskDescription = "risikoliebend";
                         break;
                     case 4:
-                        userRiskData.riskDescription = "risikoneutral";
+                        user[this.userID].riskData.riskDescription = "risikoneutral";
                         break;      
                     case 5:
-                        userRiskData.riskDescription = "leicht risikoavers";
+                        user[this.userID].riskData.riskDescription = "leicht risikoavers";
                         break; 
                     case 6:
-                        userRiskData.riskDescription = "risikoavers";
+                        user[this.userID].riskData.riskDescription = "risikoavers";
                         break; 
                     case 7:
-                        userRiskData.riskDescription = "sehr risikoavers";
+                        user[this.userID].riskData.riskDescription = "sehr risikoavers";
                         break; 
                     case 8:
-                        userRiskData.riskDescription = "höchst risikoavers";
+                        user[this.userID].riskData.riskDescription = "höchst risikoavers";
                         break; 
                     case 9:
-                        userRiskData.riskDescription = "bleib besser im Bett";
+                        user[this.userID].riskData.riskDescription = "bleib besser im Bett";
                         break; 
                     case 10:
-                        userRiskData.riskDescription = "bleib besser im Bett";
+                        user[this.userID].riskData.riskDescription = "bleib besser im Bett";
                         break; 
                 }
-                // Give user object back to UserState storage
-                await this.riskData.set(step.context, userRiskData);
+                // Write userData to DB
+                this.changes[this.userID] = user[this.userID];
+                await this.memoryStorage.write(this.changes);
+
                 // End dialog
                 if (treatment.selfReference == true && treatment.rememberName == true && treatment.civility == true) {
-                    var msg = `Vielen Dank ${user.name}, **ich habe dein Risikoverhalten nun analysiert**. Die verbale Bezeichnung deines Risikoverhaltens lautet: **${userRiskData.riskDescription}**.`; 
+                    var msg = `Vielen Dank ${user[this.userID].name}, **ich habe dein Risikoverhalten nun analysiert**. Die verbale Bezeichnung deines Risikoverhaltens lautet: **${user[this.userID].riskData.riskDescription}**.`; 
                 } else {
-                    var msg = `**Dein Risikoverhalten wurde nun analysiert**. Die verbale Bezeichnung deines Risikoverhaltens lautet: **${userRiskData.riskDescription}**.`;
+                    var msg = `**Dein Risikoverhalten wurde nun analysiert**. Die verbale Bezeichnung deines Risikoverhaltens lautet: **${user[this.userID].riskData.riskDescription}**.`;
                 }
                 await sendWithDelay(msg, step);
 
@@ -996,11 +1030,11 @@ class MyBot {
 
 
         // Functions for Investment Game
-
         async promptForIndustry (step) {
-            // Retrieve user object from UserState storage
-            const userInvestData = await this.investmentData.get(step.context, {});
-            if (!userInvestData.repeat){
+            // Read UserData from DB
+            var user = await this.memoryStorage.read([this.userID]);
+            
+            if (!user[this.userID].investData.repeat){
                 if (treatment.selfReference == true){
                     var msg = "Da nun alle von dir relevanten Daten erfasst sind und dein Risikoprofil ermittelt ist, können wir uns zusammen um deine **Investitionsentscheidung** kümmern. Du hast ein Budget von **3,00€** zur Verfügung.";
                 } else {
@@ -1016,23 +1050,27 @@ class MyBot {
             
         }
         async sendInstructions (step) {
-            // Retrieve user object from UserState storage
-            const userInvestData = await this.investmentData.get(step.context, {});
-            const user = await this.userData.get(step.context, {});
+            // Read UserData from DB
+            var user = await this.memoryStorage.read([this.userID]);
+
             // Reprompt if user doesn't choose appropriate industry from experiment's scenario description
             if (step.result.value.localeCompare("Halbleiterindustrie") != 0) {
                 if (treatment.selfReference == true) {
-                    var msg = `Entschuldigung, ${user.name}, diese Funktion ist leider zum aktuellen Zeitpunkt noch nicht verfügbar. Bitte entscheide dich für eine andere Branche.`;
+                    var msg = `Entschuldigung, ${user[this.userID].name}, diese Funktion ist leider zum aktuellen Zeitpunkt noch nicht verfügbar. Bitte entscheide dich für eine andere Branche.`;
                 } else {
                     var msg = `Diese Funktion ist zum aktuellen Zeitpunkt nicht verfügbar. Entscheide dich für eine andere Branche.`;
                 }
                 await sendWithDelay(msg, step);
 
-                userInvestData.repeat = true;
+                user[this.userID].investData.repeat = true;
+                // Write userData to DB
+                this.changes[this.userID] = user[this.userID];
+                await this.memoryStorage.write(this.changes);
+
+                // Loop dialog
                 return await step.replaceDialog('investmentDecision');
             }
-            // Give user object back to UserState storage
-            await this.investmentData.set(step.context, userInvestData);
+
             // Send instructions and ask if user understood
             if (treatment.selfReference == true) {
                 var msg = "Wir werden nun deinem Ziel nachkommen, dein Investitionsportfolio um eine Investition in der **Halbleiterindustrie** zu erweitern.";
@@ -1062,8 +1100,9 @@ class MyBot {
 
         }
         async furtherInformation (step) {
-            // Retrieve user object from UserState storage
-            const userInvestData = await this.investmentData.get(step.context, {});
+            // Read UserData from DB
+            var user = await this.memoryStorage.read([this.userID]);
+
             var validation = await validateInput(step.result, yesno);
             // Does user ask for further information?
             if (validation.localeCompare("Nein") == 0) {
@@ -1094,30 +1133,31 @@ class MyBot {
             }
         }
         async presentCompanyInfo (step) {
-            // Retrieve user object from UserState storage
-            const userInvestData = await this.investmentData.get(step.context, {});
+            // Read UserData from DB
+            var user = await this.memoryStorage.read([this.userID]);
 
             // Create array if it doesn't exist yet
-            if (!userInvestData.order) {
-                userInvestData.order = [];
+            if (!user[this.userID].investData.order) {
+                user[this.userID].investData.order = [];
             }
 
             // Create random order and save order to investmentData
             var arr = ["0", "1", "2"];
             for (var i = 1; i <= 3; i++){
-                userInvestData.order.push(arr.splice(Math.floor(Math.random() * arr.length), 1)[0]);
+                user[this.userID].investData.order.push(arr.splice(Math.floor(Math.random() * arr.length), 1)[0]);
             }
 
             // Present Adaptive cards in a carousel in random order
             let messageWithCarouselOfCards = MessageFactory.carousel([
-                CardFactory.adaptiveCard(factSheet[userInvestData.order[0]]),
-                CardFactory.adaptiveCard(factSheet[userInvestData.order[1]]),
-                CardFactory.adaptiveCard(factSheet[userInvestData.order[2]]),
+                CardFactory.adaptiveCard(factSheet[user[this.userID].investData.order[0]]),
+                CardFactory.adaptiveCard(factSheet[user[this.userID].investData.order[1]]),
+                CardFactory.adaptiveCard(factSheet[user[this.userID].investData.order[2]]),
             ],"Hier die Unternehmensdaten. Nimm dir ausreichend Zeit, diese zu lesen.");
             await step.context.sendActivity(messageWithCarouselOfCards);
 
-            // Give user object back to UserState storage
-            await this.investmentData.set(step.context, userInvestData);
+            // Write userData to DB
+            this.changes[this.userID] = user[this.userID];
+            await this.memoryStorage.write(this.changes);
 
             // Ask user for any input to continue with next dialog
             if (treatment.selfReference == true) {
@@ -1131,42 +1171,44 @@ class MyBot {
             
         }
         async recommendInvestment (step) {
-            // Retrieve user object from UserState storage
-            const userInvestData = await this.investmentData.get(step.context, {});
-            const user = await this.userData.get(step.context, {});
+            // Read UserData from DB
+            var user = await this.memoryStorage.read([this.userID]);
+
             // Make randomized recommendation 
             if (treatment.selfReference == true) {
                 var msg = `Basierend auf meinen vergangenen Erfahrungen halte ich \
-                sowohl die **${investmentData.companies[userInvestData.order[0]]}** als auch die **${investmentData.companies[userInvestData.order[2]]}** für **überbewertet**. \
-                Die **${investmentData.companies[userInvestData.order[1]]}** halte ich dagegen für **unterbewertet**. \
-                Das Ergebnis deiner **Risikoverhaltensanalyse** passt außerdem zum Unternehmensprofil der **${investmentData.companies[userInvestData.order[1]]}**. Aufgrund dessen \
-                empfehle ich dir, in die **${investmentData.companies[userInvestData.order[1]]}** zu investieren.`;
+                sowohl die **${investmentData.companies[user[this.userID].investData.order[0]]}** als auch die **${investmentData.companies[user[this.userID].investData.order[2]]}** für **überbewertet**. \
+                Die **${investmentData.companies[user[this.userID].investData.order[1]]}** halte ich dagegen für **unterbewertet**. \
+                Das Ergebnis deiner **Risikoverhaltensanalyse** passt außerdem zum Unternehmensprofil der **${investmentData.companies[user[this.userID].investData.order[1]]}**. Aufgrund dessen \
+                empfehle ich dir, in die **${investmentData.companies[user[this.userID].investData.order[1]]}** zu investieren.`;
                 await sendWithDelay(msg, step);
             } else {
                 var msg = `Basierend auf vergangenen Erfahrungen wird \
-                sowohl die **${investmentData.companies[userInvestData.order[0]]}** als auch die **${investmentData.companies[userInvestData.order[2]]}** für **überbewertet** gehalten. \
-                Die **${investmentData.companies[userInvestData.order[1]]}** wird als **unterbewertet** eingestuft. \
-                Das Ergebnis deiner **Risikoverhaltensanalyse** passt außerdem zum Unternehmensprofil der **${investmentData.companies[userInvestData.order[1]]}**. Aufgrund dessen \
-                wird dir vom Robo-Advisory System empfohlen, in die **${investmentData.companies[userInvestData.order[1]]}** zu investieren.`;
+                sowohl die **${investmentData.companies[user[this.userID].investData.order[0]]}** als auch die **${investmentData.companies[user[this.userID].investData.order[2]]}** für **überbewertet** gehalten. \
+                Die **${investmentData.companies[user[this.userID].investData.order[1]]}** wird als **unterbewertet** eingestuft. \
+                Das Ergebnis deiner **Risikoverhaltensanalyse** passt außerdem zum Unternehmensprofil der **${investmentData.companies[user[this.userID].investData.order[1]]}**. Aufgrund dessen \
+                wird dir vom Robo-Advisory System empfohlen, in die **${investmentData.companies[user[this.userID].investData.order[1]]}** zu investieren.`;
                 await sendWithDelay(msg, step);
             }
-            // Give user object back to UserState storage
-            await this.investmentData.set(step.context, userInvestData);
+            // Write userData to DB
+            this.changes[this.userID] = user[this.userID];
+            await this.memoryStorage.write(this.changes);
 
             // Continue to next dialog step
             return await step.next();
         }
         async captureInvestmentDecision (step) {
-            // Retrieve user object from UserState storage
-            const userInvestData = await this.investmentData.get(step.context, {});
+            // Read UserData from DB
+            var user = await this.memoryStorage.read([this.userID]);
+
             // Let user make decision with the help of a heroCard with buttons
             const reply = { type: ActivityTypes.Message };
 
             // Create dynamic buttons with the same order that was randomly generated before
             const buttons = [
-                { type: ActionTypes.ImBack, title: investmentData.companies[userInvestData.order[0]], value: investmentData.companies[userInvestData.order[0]] },
-                { type: ActionTypes.ImBack, title: investmentData.companies[userInvestData.order[1]], value: investmentData.companies[userInvestData.order[1]] },
-                { type: ActionTypes.ImBack, title: investmentData.companies[userInvestData.order[2]], value: investmentData.companies[userInvestData.order[2]] }
+                { type: ActionTypes.ImBack, title: investmentData.companies[user[this.userID].investData.order[0]], value: investmentData.companies[user[this.userID].investData.order[0]] },
+                { type: ActionTypes.ImBack, title: investmentData.companies[user[this.userID].investData.order[1]], value: investmentData.companies[user[this.userID].investData.order[1]] },
+                { type: ActionTypes.ImBack, title: investmentData.companies[user[this.userID].investData.order[2]], value: investmentData.companies[user[this.userID].investData.order[2]] }
             ];
 
             // Add buttons and text to hero card
@@ -1178,23 +1220,26 @@ class MyBot {
             await step.context.sendActivity(reply);
         }
         async saveInvestmentDecision (step) {
-            // Retrieve user object from UserState storage
-            const userInvestData = await this.investmentData.get(step.context, {});
+            // Read UserData from DB
+            var user = await this.memoryStorage.read([this.userID]);
+
             // Save choice
-            userInvestData.choice = step.result;
+            user[this.userID].investData.choice = step.result;
             
             // Determine, if user followed advisor or not and reply accordingly
-            if (userInvestData.choice.localeCompare(investmentData.companies[userInvestData.order[1]]) == 0) {
+            if (user[this.userID].investData.choice.localeCompare(investmentData.companies[user[this.userID].investData.order[1]]) == 0) {
                 await step.context.sendActivity();
-                userInvestData.follow = true;
-                // Give user object back to UserState storage
-                await this.investmentData.set(step.context, userInvestData);
+                user[this.userID].investData.follow = true;
+                
+                // Write userData to DB
+                this.changes[this.userID] = user[this.userID];
+                await this.memoryStorage.write(this.changes);
 
                 // Inform user and prompt for waiting a fictive year
                 if (treatment.civility == true) {
-                    var msg = `Du hast dich dafür entschieden, in die **${userInvestData.choice}** zu investieren! Vielen Dank, dass du unseren Service genutzt hast und danke für dein Vertrauen.`;
+                    var msg = `Du hast dich dafür entschieden, in die **${user[this.userID].investData.choice}** zu investieren! Vielen Dank, dass du unseren Service genutzt hast und danke für dein Vertrauen.`;
                 } else {
-                    var msg = `Du hast dich dafür entschieden, in die **${userInvestData.choice}** zu investieren!`;
+                    var msg = `Du hast dich dafür entschieden, in die **${user[this.userID].investData.choice}** zu investieren!`;
                 }
 
                 await delay(msg, step).then(async function() { 
@@ -1202,14 +1247,17 @@ class MyBot {
                 });
                 
             } else {
-                userInvestData.follow = false;
-                // Give user object back to UserState storage
-                await this.investmentData.set(step.context, userInvestData);
+                user[this.userID].investData.follow = false;
+
+                // Write userData to DB
+                this.changes[this.userID] = user[this.userID];
+                await this.memoryStorage.write(this.changes);
+
                 // Inform user and prompt for waiting a fictive year
                 if (treatment.civility == true) {
-                    var msg = `Du hast dich dafür entschieden, in die **${userInvestData.choice}** zu investieren! Vielen Dank, dass du unseren Service genutzt hast.`;
+                    var msg = `Du hast dich dafür entschieden, in die **${user[this.userID].investData.choice}** zu investieren! Vielen Dank, dass du unseren Service genutzt hast.`;
                 } else {
-                    var msg = `Du hast dich dafür entschieden, in die **${userInvestData.choice}** zu investieren!`;
+                    var msg = `Du hast dich dafür entschieden, in die **${user[this.userID].investData.choice}** zu investieren!`;
                 }
                 await sendWithDelay(msg, step);
 
@@ -1220,8 +1268,9 @@ class MyBot {
             }
         }
         async presentStock (step) {
-            // Retrieve user object from UserState storage
-            const userInvestData = await this.investmentData.get(step.context, {});
+            // Read UserData from DB
+            var user = await this.memoryStorage.read([this.userID]);
+
             // Randomly assign stock price charts to companies
             var arr = ["0", "1", "2", "3"];
             var allOutcomes = ["win1", "win2", "loss1", "loss2"];
@@ -1240,17 +1289,17 @@ class MyBot {
             var statements = [];
             for (var i = 0; i < 3; i++) {
                 if (outcomes[i].localeCompare("win1") == 0) {
-                    statements[i] = `Der Wert der **${investmentData.companies[userInvestData.order[i]]}** hat sich um 21,4% **erhöht**.`
-                    userInvestData.win1 = investmentData.companies[userInvestData.order[i]];
+                    statements[i] = `Der Wert der **${investmentData.companies[user[this.userID].investData.order[i]]}** hat sich um 21,4% **erhöht**.`
+                    user[this.userID].investData.win1 = investmentData.companies[user[this.userID].investData.order[i]];
                 } else if (outcomes[i].localeCompare("win2") == 0) {
-                    statements[i] = `Der Wert der **${investmentData.companies[userInvestData.order[i]]}** hat sich um 14,3% **erhöht**.`
-                    userInvestData.win2 = investmentData.companies[userInvestData.order[i]];
+                    statements[i] = `Der Wert der **${investmentData.companies[user[this.userID].investData.order[i]]}** hat sich um 14,3% **erhöht**.`
+                    user[this.userID].investData.win2 = investmentData.companies[user[this.userID].investData.order[i]];
                 } else if (outcomes[i].localeCompare("loss1") == 0) {
-                    statements[i] = `Der Wert der **${investmentData.companies[userInvestData.order[i]]}** hat sich um 14,3% **verringert**.`
-                    userInvestData.loss1 = investmentData.companies[userInvestData.order[i]];
+                    statements[i] = `Der Wert der **${investmentData.companies[user[this.userID].investData.order[i]]}** hat sich um 14,3% **verringert**.`
+                    user[this.userID].investData.loss1 = investmentData.companies[user[this.userID].investData.order[i]];
                 } else if (outcomes[i].localeCompare("loss2") == 0) {
-                    statements[i] = `Der Wert der **${investmentData.companies[userInvestData.order[i]]}** hat sich um 21,5% **verringert**.`
-                    userInvestData.loss2 = investmentData.companies[userInvestData.order[i]];
+                    statements[i] = `Der Wert der **${investmentData.companies[user[this.userID].investData.order[i]]}** hat sich um 21,5% **verringert**.`
+                    user[this.userID].investData.loss2 = investmentData.companies[user[this.userID].investData.order[i]];
                 }
             }
 
@@ -1263,9 +1312,9 @@ class MyBot {
             await sendWithDelay(msg, step);           
 
             // Present stock price charts in a carousel
-            var resultChart1 = "" + investmentData.companies[userInvestData.order[0]].toLowerCase().replace(/\s/g, '') + "_" + outcomes[0];
-            var resultChart2 = "" + investmentData.companies[userInvestData.order[1]].toLowerCase().replace(/\s/g, '') + "_" + outcomes[1];
-            var resultChart3 = "" + investmentData.companies[userInvestData.order[2]].toLowerCase().replace(/\s/g, '') + "_" + outcomes[2];
+            var resultChart1 = "" + investmentData.companies[user[this.userID].investData.order[0]].toLowerCase().replace(/\s/g, '') + "_" + outcomes[0];
+            var resultChart2 = "" + investmentData.companies[user[this.userID].investData.order[1]].toLowerCase().replace(/\s/g, '') + "_" + outcomes[1];
+            var resultChart3 = "" + investmentData.companies[user[this.userID].investData.order[2]].toLowerCase().replace(/\s/g, '') + "_" + outcomes[2];
 
             let messageWithCarouselOfCharts = MessageFactory.carousel([
                 this.getStockPriceAttachment(resultChart1),
@@ -1282,8 +1331,9 @@ class MyBot {
                 statement = "" + statement + "\n" + statements[i];
             }
 
-            // Give user object back to UserState storage
-            await this.investmentData.set(step.context, userInvestData);
+            // Write userData to DB
+            this.changes[this.userID] = user[this.userID];
+            await this.memoryStorage.write(this.changes);
 
             // Interrupt flow until user klicks continue
             await delay(statement, step).then(async function() { 
@@ -1293,37 +1343,40 @@ class MyBot {
             
         }
         async presentPayout (step) {
-            // Retrieve user object from UserState storage
-            const userInvestData = await this.investmentData.get(step.context, {});
-            const user = await this.userData.get(step.context, {});
-
+            // Read UserData from DB
+            var user = await this.memoryStorage.read([this.userID]);
+            
             // Determine user's payout, send information to user and save in investmentData
-            if (userInvestData.choice.localeCompare(userInvestData.win1) == 0) {
-                var msg = `Du hast in die **${userInvestData.choice}** investiert. Deine Investitionssumme von 3,00€ hat sich somit auf **4,00€ erhöht** und du hast **1,50€ Gewinn gemacht**.`;
+            if (user[this.userID].investData.choice.localeCompare(user[this.userID].investData.win1) == 0) {
+                var msg = `Du hast in die **${user[this.userID].investData.choice}** investiert. Deine Investitionssumme von 3,00€ hat sich somit auf **4,00€ erhöht** und du hast **1,00€ Gewinn gemacht**.`;
                 await sendWithDelay(msg, step);  
-                userInvestData.payout = "7,00€";
-            } else if (userInvestData.choice.localeCompare(userInvestData.win2) == 0) {
-                var msg = `Du hast in die **${userInvestData.choice}** investiert. Deine Investitionssumme von 3,00€ hat sich somit auf **3,50€ erhöht** und du hast **1,00€ Gewinn gemacht**.`;
+                user[this.userID].investData.payout = "7,00€";
+            } else if (user[this.userID].investData.choice.localeCompare(user[this.userID].investData.win2) == 0) {
+                var msg = `Du hast in die **${user[this.userID].investData.choice}** investiert. Deine Investitionssumme von 3,00€ hat sich somit auf **3,50€ erhöht** und du hast **0,50€ Gewinn gemacht**.`;
                 await sendWithDelay(msg, step);
-                userInvestData.payout = "6,50€";
-            } else if (userInvestData.choice.localeCompare(userInvestData.loss1) == 0) {
-                var msg = `Du hast in die **${userInvestData.choice}** investiert. Deine Investitionssumme von 3,00€ hat sich somit auf **2,50€ verringert** und du hast **1,00€ Verlust gemacht**.`;
+                user[this.userID].investData.payout = "6,50€";
+            } else if (user[this.userID].investData.choice.localeCompare(user[this.userID].investData.loss1) == 0) {
+                var msg = `Du hast in die **${user[this.userID].investData.choice}** investiert. Deine Investitionssumme von 3,00€ hat sich somit auf **2,50€ verringert** und du hast **0,50€ Verlust gemacht**.`;
                 await sendWithDelay(msg, step);
-                userInvestData.payout = "5,50€";
-            } else if (userInvestData.choice.localeCompare(userInvestData.loss2) == 0) {
-                var msg = `Du hast in die **${userInvestData.choice}** investiert. Deine Investitionssumme von 3,00€ hat sich somit auf **2,00€ verringert** und du hast **1,50€ Verlust gemacht**.`;
+                user[this.userID].investData.payout = "5,50€";
+            } else if (user[this.userID].investData.choice.localeCompare(user[this.userID].investData.loss2) == 0) {
+                var msg = `Du hast in die **${user[this.userID].investData.choice}** investiert. Deine Investitionssumme von 3,00€ hat sich somit auf **2,00€ verringert** und du hast **1,00€ Verlust gemacht**.`;
                 await sendWithDelay(msg, step);
-                userInvestData.payout = "5,00€";
+                user[this.userID].investData.payout = "5,00€";
             }
 
             // Praise / Apologize 
             if (treatment.apologizePraise) {
-                if (userInvestData.choice.localeCompare(userInvestData.win1) || userInvestData.choice.localeCompare(userInvestData.win2)) {
-                    var msg = `Herzlichen Glückwunsch, ${user.name}, zu deinem Gewinn! Du hast dein Können als Investor bewiesen.`
+                if (user[this.userID].investData.choice.localeCompare(user[this.userID].investData.win1) || user[this.userID].investData.choice.localeCompare(user[this.userID].investData.win2)) {
+                    var msg = `Herzlichen Glückwunsch, ${user[this.userID].name}, zu deinem Gewinn! Du hast dein Können als Investor bewiesen.`
                 } else {
-                    var msg = `${user.name}, es tut mir wirklich Leid, dass die Aktienkurse deiner Aktie gefallen sind. Dein nächstes Investment wird sich bestimmt besser entwickeln.`
+                    var msg = `${user[this.userID].name}, es tut mir wirklich Leid, dass die Aktienkurse deiner Aktie gefallen sind. Dein nächstes Investment wird sich bestimmt besser entwickeln.`
                 }
             }
+
+            // Write userData to DB
+            this.changes[this.userID] = user[this.userID];
+            await this.memoryStorage.write(this.changes);
 
             // Loop main menu or go to next dialog (depending on test mode)
             if (testing == true) {
@@ -1347,20 +1400,23 @@ class MyBot {
         }
 
         async end (step) {
-            // Retrieve user object from UserState storage
-            const user = await this.userData.get(step.context, {});
-            if (!user.endRepeat) {
+            /// Read UserData from DB
+            var user = await this.memoryStorage.read([this.userID]);
+
+            if (!user[this.userID].endRepeat) {
                 if (treatment.rememberName == true) {
-                    var msg = `Danke, ${user.name}, für deine Zeit. Der Beratungsprozess ist nun abgeschlossen.`;
+                    var msg = `Danke, ${user[this.userID].name}, für deine Zeit. Der Beratungsprozess ist nun abgeschlossen.`;
                 } else {
                     var msg = `Der Beratungsprozess ist nun abgeschlossen.`;
                 }
                 await sendWithDelay(msg, step);
-                user.endRepeat = true;
+                user[this.userID].endRepeat = true;
             }
                         
-            // Give user object back to UserState storage
-            await this.userData.set(step.context, user);
+            // Write userData to DB
+            this.changes[this.userID] = user[this.userID];
+            await this.memoryStorage.write(this.changes);
+
             // Inform user and pause dialog
             await delay("Bis bald!", step).then(async function() { 
                 return await step.prompt('textPrompt', "Bis bald!");
@@ -1368,18 +1424,19 @@ class MyBot {
             
         }
         async loopEnd (step) {
-            // Retrieve user object from UserState storage
-            const user = await this.userData.get(step.context, {});
+            /// Read UserData from DB
+            var user = await this.memoryStorage.read([this.userID]);
+
             // Inform user
             if (treatment.rememberName == true) {
-                var msg = `${user.name}, der Beratungsprozess ist nun wirklich abgeschlossen!`;
+                var msg = `${user[this.userID].name}, der Beratungsprozess ist nun wirklich abgeschlossen!`;
             } else {
                 var msg = `Der Beratungsprozess ist nun wirklich abgeschlossen!`;
             }
             
             await sendWithDelay(msg, step);
-            // Give user object back to UserState storage
-            await this.userData.set(step.context, user);
+
+
             // Loop dialog
             return await step.replaceDialog('endDialog');
         }
@@ -1388,11 +1445,11 @@ class MyBot {
 
         async displayPayout (step) {
             console.log("Display Payout");
-            // Retrieve user object from UserState storage
-            const userInvestData = await this.investmentData.get(step.context, {});
-            const user = await this.userData.get(step.context, {});
+            // Read UserData from DB
+            var user = await this.memoryStorage.read([this.userID]);
 
-            var msg = `Hallo ${user.name}. Am Ausgang kannst du dir deine Bezahlung von ${userInvestData.payout} abholen.` ;
+
+            var msg = `Hallo ${user[this.userID].name}. Am Ausgang kannst du dir deine Bezahlung von ${user[this.userID].investData.payout} abholen.` ;
             await sendWithDelay(msg, step);
         }
 
@@ -1458,6 +1515,7 @@ class MyBot {
                         // Funktionierender Code, wenn WebChat gefixt
                         console.log("User added");
                         this.userID = turnContext.activity.membersAdded[idx].id;
+                        //this.userID = "123451"
                         console.log("UserID: " + this.userID);
                         
                         
@@ -1522,7 +1580,7 @@ async function sendWithDelay(msg, step) {
 
 // Function returning promise after timeout calculated by calculateDelay()-Function
 function delay(message, step, v) {
-    console.log("Delay Funktion");
+    //console.log("Delay Funktion");
     
     // Default value for timeout is 0
     var t = 0;
@@ -1559,7 +1617,7 @@ function delay(message, step, v) {
 }
 
 function calculateDelay(previousMessage, botResponse, mode) {
-    console.log("Calculate Delay Funktion");
+    //console.log("Calculate Delay Funktion");
     // STATIC: Return static delay length
     if (mode === "zero"){
         return 0; // + networkdelay
