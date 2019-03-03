@@ -231,6 +231,9 @@ const treatment = {
     apologizePraise: false,
 }
 
+// Activates or deactivates the advisory dialog and payout dialog (split in experiment)
+const advisoryDialog = true;
+const payoutDialog = false;
 
 // If this is activated, each dialog can be selected independently
 const testing = false;
@@ -372,9 +375,15 @@ class MyBot {
             this.recommendInvestment.bind(this),
             this.captureInvestmentDecision.bind(this),
             this.saveInvestmentDecision.bind(this),
+            this.finishAdvisory.bind(this),
+        ]));
+
+        // Investment result dialog
+        this.dialogSet.add(new WaterfallDialog('investmentResult', [
+            this.prepareStockPrep.bind(this),
             this.presentStock.bind(this),
             this.presentPayout.bind(this),
-        ]));
+        ]))
 
         // Enddialog
         this.dialogSet.add(new WaterfallDialog('endDialog', [
@@ -1242,8 +1251,13 @@ class MyBot {
                     var msg = `Du hast dich dafür entschieden, in die **${user[this.userID].investData.choice}** zu investieren!`;
                 }
 
+                await sendWithDelay(msg, step);
+
+                var msg = "Nun heißt es warten, bis die Aktienkurse sich verändern. Ob du Gewinn oder Verlust gemacht hast, wirst du später erfahren."
+                await sendWithDelay(msg, step);
+
                 await delay(msg, step).then(async function() { 
-                    return await step.prompt('choicePrompt', msg , ['Ein Jahr warten']);
+                    return await step.prompt('choicePrompt', msg , ['Beratung abschließen']);
                 });
                 
             } else {
@@ -1261,12 +1275,48 @@ class MyBot {
                 }
                 await sendWithDelay(msg, step);
 
+                var msg = "Nun heißt es warten, bis die Aktienkurse sich verändern. Ob du Gewinn oder Verlust gemacht hast, wirst du später erfahren."
+
                 await delay(msg, step).then(async function() { 
-                    return await step.prompt('choicePrompt', msg, ['Ein Jahr warten']);
+                    return await step.prompt('choicePrompt', msg , ['Abschließen']);
                 });
                
             }
         }
+
+        async finishAdvisory (step) {
+            return await step.replaceDialog('endDialog');
+        }
+
+
+        async prepareStockPrep (step) {
+            // Read UserData from DB
+            var user = await this.memoryStorage.read([this.userID]);
+
+            // Welcome user again
+            if (treatment.rememberName == true) {
+                var msg = `Hallo und willkommen zurück, ${user[this.userID].name}. Ein Jahr ist vergangen.`;
+            } else {
+                var msg = "Ein Jahr ist nun vergangen."
+            }
+            
+            await sendWithDelay(msg, step); 
+
+            // Inform user
+            if (treatment.selfReference == true) {
+                var msg = "Sehen wir uns an, wie sich die Aktienkurse der Unternehmen entwickelt haben."; 
+            } else {
+                var msg = "Gleich siehst du, wie sich die Aktienkurse der Unternehmen entwickelt haben.";
+            }
+            await sendWithDelay(msg, step);
+
+            var msg = "Bereit?"
+
+                await delay(msg, step).then(async function() { 
+                    return await step.prompt('choicePrompt', msg , ['Weiter']);
+                });
+        }
+            
         async presentStock (step) {
             // Read UserData from DB
             var user = await this.memoryStorage.read([this.userID]);
@@ -1303,13 +1353,7 @@ class MyBot {
                 }
             }
 
-            // Inform user
-            if (treatment.selfReference == true) {
-                var msg = "Ein Jahr ist vergangen. Sehen wir uns an, wie sich die Aktienkurse der Unternehmen entwickelt haben."; 
-            } else {
-                var msg = "Ein Jahr ist vergangen. Gleich siehst du, wie sich die Aktienkurse der Unternehmen entwickelt haben.";
-            }
-            await sendWithDelay(msg, step);           
+                    
 
             // Present stock price charts in a carousel
             var resultChart1 = "" + investmentData.companies[user[this.userID].investData.order[0]].toLowerCase().replace(/\s/g, '') + "_" + outcomes[0];
@@ -1342,9 +1386,13 @@ class MyBot {
             
             
         }
+
+
         async presentPayout (step) {
             // Read UserData from DB
             var user = await this.memoryStorage.read([this.userID]);
+
+            
             
             // Determine user's payout, send information to user and save in investmentData
             if (user[this.userID].investData.choice.localeCompare(user[this.userID].investData.win1) == 0) {
@@ -1470,11 +1518,23 @@ class MyBot {
                 console.log("Bot Started by user");
                 try { 
                     if (user[this.userID].name) {
-                        await step.context.sendActivity(`Hinweis: Nutzer ${user[this.userID].name} erkannt.`);
+                        if (treatment.rememberName == true) {
+                            await step.context.sendActivity(`Hinweis: Nutzer ${user[this.userID].name} erkannt.`);
+                        } else {
+                            await step.context.sendActivity(`Hinweis: Nutzer erkannt.`);
+                        }   
                     }
                 }
                 catch(e) { console.log("Nutzer ist neu") }
-                return await step.replaceDialog("welcome");
+
+                // Route to correct dialog
+                if (advisoryDialog == true && payoutDialog == false) {
+                    await step.replaceDialog("welcome");
+                }
+                if (advisoryDialog == false && payoutDialog == true) {
+                    await step.replaceDialog('investmentResult')
+                }
+                
             } else {
                 return await step.replaceDialog("startBot");
             }
@@ -1515,40 +1575,16 @@ class MyBot {
                         // Funktionierender Code, wenn WebChat gefixt
                         console.log("User added");
                         this.userID = turnContext.activity.membersAdded[idx].id;
-                        //this.userID = "123451"
+                        //this.userID = "1234512"
                         console.log("UserID: " + this.userID);
                         
-                        
-
-                        /* // Start the dialog.
-                        
-                        
-                        // Read UserState. If the 'DidBotWelcomedUser' does not exist (first time ever for a user) set the default to false.
-                        const didBotWelcomeUser = await this.welcomedUserProperty.get(turnContext, false);
-
-                        // Your bot should proactively send a welcome message to a personal chat the first time
-                        // (and only the first time) a user initiates a personal chat with your bot.
-                        if (didBotWelcomeUser === false) {
-
-                            //await turnContext.sendActivity('You are seeing this message because this is the first time you interact with the bot.');
-                            // Set the flag indicating the bot handled the user's first message.
-                            await this.welcomedUserProperty.set(turnContext, true);
-                            // Start main dialog
+                        // Route to correct dialog depending on treatment and bot type
+                        if (treatment.initiation == true && advisoryDialog == true) {
                             await dc.beginDialog('welcome');
-    
-                            
-                        } else if (didBotWelcomeUser === true) {
-                            // When user was already greeted, start profileCreation
-                            await dc.beginDialog('createProfile');
-                        }
-
-
-                        // console.log(dc.stack); */
-
-                        if (treatment.initiation == true) {
-                            await dc.beginDialog('welcome');
-                        } else {
+                        } else if (treatment.initiation == false) {
                             await dc.beginDialog('startBot');
+                        } else if (treatment.initiation == true && advisoryDialog == false && payoutDialog == true) {
+                            await dc.beginDialog('investmentResult')
                         }
                     }
                     if (turnContext.activity.membersAdded[idx].id === turnContext.activity.recipient.id) {
