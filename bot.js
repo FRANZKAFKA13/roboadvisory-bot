@@ -199,7 +199,7 @@ const genders = {
 const yesno = {
     yes: { 
         solution: "Ja",
-        possibilities: ['ja', 'yes', 'jop', 'jupp', 'jup', 'klar', 'si', 'oui', 'klaro', 'jaha', 'jaa'],
+        possibilities: ['ja', 'yes', 'jop', 'jupp', 'jup', 'klar', 'si', 'oui', 'klaro', 'jaha', 'jaa', 'ya', 'yup', 'yas'],
     },
     no: {
         solution: "Nein",
@@ -1113,6 +1113,12 @@ class MyBot {
             var user = await this.memoryStorage.read([this.userID]);
 
             var validation = await validateInput(step.result, yesno);
+
+            // If user didn't say "Yes", count it as "No"
+            if (!validation) {
+                validation = "Nein";
+            }
+
             // Does user ask for further information?
             if (validation.localeCompare("Nein") == 0) {
                 if (treatment.selfReference == true) {
