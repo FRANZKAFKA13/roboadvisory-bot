@@ -226,7 +226,7 @@ const treatment = {
     selfReference: false,
     civility: false,
     rememberName: false,
-    initiation: false,
+    initiation: true,
     smallTalk: false,
     apologizePraise: false,
 }
