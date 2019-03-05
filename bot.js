@@ -789,9 +789,9 @@ class MyBot {
             // Read UserData from DB
             var user = await this.memoryStorage.read([this.userID]);
             try {
-                roundCounterTemp = user[this.userID].riskData.roundCounter;
+                var roundCounterTemp = user[this.userID].riskData.roundCounter;
             }
-            catch {
+            catch (e) {
                 roundCounterTemp = "";
             }
 
@@ -1273,7 +1273,7 @@ class MyBot {
                 await sendWithDelay(msg, step);
 
                 var msg = "Nun heißt es warten, bis die Aktienkurse sich verändern. Ob du Gewinn oder Verlust gemacht hast, wirst du später erfahren."
-                await sendWithDelay(msg, step);
+
 
                 await delay(msg, step).then(async function() { 
                     return await step.prompt('choicePrompt', msg , ['Beratung abschließen']);
