@@ -1312,6 +1312,15 @@ class MyBot {
             // Read UserData from DB
             var user = await this.memoryStorage.read([this.userID]);
 
+            try {
+                if(user[this.userID].name) {
+                    console.log("Nutzerdaten gefunden");
+                }
+            }
+            catch (e) {
+                await await step.context.sendActivity("Leider sind keine Nutzerdaten bekannt.");
+            }
+
             // Welcome user again
             if (treatment.rememberName == true) {
                 var msg = `Hallo und willkommen zurück, ${user[this.userID].name}. Ein Jahr ist vergangen.`;
