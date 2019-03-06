@@ -717,6 +717,13 @@ class MyBot {
         async isProfileCorrect (step) {
             var validation = await validateInput(step.result, yesno);
 
+            if (!validation) {
+                if(treatment.selfReference == true) { var msg = "Sorry, das habe ich nicht verstanden." }
+                else { var msg = "Die Eingabe wurde nicht erkannt."}
+                await sendWithDelay(msg, step);
+                return await step.replaceDialog('displayProfile');
+            }
+
             // If profile incorrect, delete profile and recreate
             if (validation.localeCompare("Nein") == 0) {
                 // Delete Profile 
@@ -781,9 +788,15 @@ class MyBot {
         async presentRiskCards (step) {
             // Read UserData from DB
             var user = await this.memoryStorage.read([this.userID]);
+            try {
+                var roundCounterTemp = user[this.userID].riskData.roundCounter;
+            }
+            catch (e) {
+                roundCounterTemp = "";
+            }
 
             // Überprüfen, ob Spiel bereits läuft, falls nicht, neue Runde starten 
-            if (!user[this.userID].riskData.roundCounter) {
+            if (!roundCounterTemp) {
                 user[this.userID].riskData.roundCounter = 1;
                 if (treatment.selfReference == true) {
                     var msg = "Bevor wir uns deinem Investmentportfolio widmen, werde ich zunächst **dein Risikoverhalten** ermitteln."
@@ -1260,7 +1273,7 @@ class MyBot {
                 await sendWithDelay(msg, step);
 
                 var msg = "Nun heißt es warten, bis die Aktienkurse sich verändern. Ob du Gewinn oder Verlust gemacht hast, wirst du später erfahren."
-                await sendWithDelay(msg, step);
+
 
                 await delay(msg, step).then(async function() { 
                     return await step.prompt('choicePrompt', msg , ['Beratung abschließen']);
@@ -1298,6 +1311,15 @@ class MyBot {
         async prepareStockPrep (step) {
             // Read UserData from DB
             var user = await this.memoryStorage.read([this.userID]);
+
+            try {
+                if(user[this.userID].name) {
+                    console.log("Nutzerdaten gefunden");
+                }
+            }
+            catch (e) {
+                await await step.context.sendActivity("Leider sind keine Nutzerdaten bekannt.");
+            }
 
             // Welcome user again
             if (treatment.rememberName == true) {
