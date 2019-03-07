@@ -229,6 +229,7 @@ const treatment = {
     initiation: true,
     smallTalk: false,
     apologizePraise: false,
+    gender: false,
 }
 
 // Activates or deactivates the advisory dialog and payout dialog (split in experiment)
@@ -426,12 +427,12 @@ class MyBot {
             
                   
         // Welcome the user
-        if (treatment.introduction == true && treatment.rememberName == true) {
+        if (treatment.introduction == true && treatment.rememberName == true && treatment.gender == true) {
             await sendWithDelay("Hallo und herzlich willkommen, ich bin **Charles**, dein persönlicher **Investmentberater**. Ich begleite dich durch den Beratungsprozess.", step);
         } else if (treatment.introduction == true && treatment.gender == false) {
             var msg = "Hallo und herzlich willkommen, ich bin ein **Robo-Advisor**. Ich begleite dich durch den Beratungsprozess.";
             await sendWithDelay(msg, step);
-        } else if (treatment.introduction == false && treatment.selfReference == false && treatment.name == false) {
+        } else if (treatment.introduction == false && treatment.selfReference == false && treatment.rememberName == false) {
             var msg = "Du wirst nun durch den Beratungsprozess begleitet.";
             await sendWithDelay(msg, step);
         }
