@@ -5,6 +5,10 @@
 const path = require('path');
 const restify = require('restify');
 
+
+// Node.js utility library
+const util = require('util')
+
 // Read botFilePath, botFileSecret and DB information from .env file
 // Note: Ensure you have a .env file and include botFilePath and botFileSecret.
 const ENV_FILE = path.join(__dirname, '.env');
@@ -25,7 +29,7 @@ const { DialogSet } = require('botbuilder-dialogs');
 const { ShowTyping } = require('botbuilder-toybox-extensions');
 
 // Local browser storage
-//const memoryStorage = new MemoryStorage();
+const memoryStorageLocal = new MemoryStorage();
 
 
 //Add CosmosDB (greift auf Informationen in .env-Datei zu)
@@ -37,8 +41,8 @@ const memoryStorage = new CosmosDbStorage({
 })
 
 // ConversationState and UserState
-const conversationState = new ConversationState(memoryStorage);
-const userState = new UserState(memoryStorage);
+const conversationState = new ConversationState(memoryStorageLocal);
+const userState = new UserState(memoryStorageLocal);
 
 
 
@@ -106,10 +110,13 @@ const adapter = new BotFrameworkAdapter({
 // Catch-all for any unhandled errors in your bot.
 adapter.onTurnError = async (context, error) => {
     // This check writes out errors to console log .vs. app insights.
-    console.error(`\n [onTurnError]: ${error}`);
+    
+    //console.error(`\n [onTurnError]: ${error}`);
     // Send a message to the user
-    context.sendActivity(error);
-    context.sendActivity(`Oops. Something went wrong!`);
+    //context.sendActivity("error: " + error);
+    context.sendActivity(util.inspect(error, false, null, false /* enable colors */));
+    //context.sendActivity(`Oops. Something went wrong!`);
+    
     /* // Clear out state
     await conversationState.load(context);
     await conversationState.clear(context);
@@ -118,6 +125,7 @@ adapter.onTurnError = async (context, error) => {
     // Save state changes.
     await conversationState.saveChanges(context);
     await userState.saveChanges(context); */
+    await bot.onTurn(context)
     
 };
 

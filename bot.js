@@ -233,8 +233,8 @@ const treatment = {
 }
 
 // Activates or deactivates the advisory dialog and payout dialog (split in experiment)
-const advisoryDialog = false;
-const payoutDialog = true;
+const advisoryDialog = true;
+const payoutDialog = false;
 
 // If this is activated, each dialog can be selected independently
 const testing = false;
@@ -411,18 +411,32 @@ class MyBot {
     // Function for welcoming user
     async welcomeUser (step) {
         console.log("Welcome User Dialog");
-
+        
+        var user;
+        
         // Read userData object
         try {
-            var user = await this.memoryStorage.read([this.userID]);
+            user = await this.memoryStorage.read([this.userID]);
+            //await step.context.sendActivity("User Object read from DB: "+ user);
+            await step.context.sendActivity("user: " + util.inspect(user, false, null, false /* enable colors */));
         }
-        catch(e) {console.log(e)}
+        catch(e) {
+            await step.context.sendActivity("Reading user data failed");
+            await step.context.sendActivity(e);
+        }
 
-        // Create UserData object and save it to DB if the user is new
+        // If user is new, create UserData object and save it to DB and read it for further use
         if(isEmpty(user)) {
+            await step.context.sendActivity("New User Detected");
             this.changes[this.userID] = this.userData;
             await this.memoryStorage.write(this.changes);
+            user = await this.memoryStorage.read([this.userID]);
         }
+
+        
+        
+
+
               
             
                   
@@ -489,7 +503,7 @@ class MyBot {
             // Read UserData from DB
             var user = await this.memoryStorage.read([this.userID]);
             console.log(user);
-
+            await step.context.sendActivity("Key: " + this.userID);
             // Before saving entry, check if it already exists
             if(!user[this.userID].name) {
                 user[this.userID].name = step.result;
@@ -717,27 +731,35 @@ class MyBot {
             });
         }
         async isProfileCorrect (step) {
-            var validation = await validateInput(step.result, yesno);
-
-            if (!validation) {
-                if(treatment.selfReference == true) { var msg = "Sorry, das habe ich nicht verstanden." }
-                else { var msg = "Die Eingabe wurde nicht erkannt."}
-                await sendWithDelay(msg, step);
-                return await step.replaceDialog('displayProfile');
+            try {
+                var validation = await validateInput(step.result, yesno);
             }
-
-            // If profile incorrect, delete profile and recreate
-            if (validation.localeCompare("Nein") == 0) {
-                // Delete Profile 
-                if (treatment.civility == true) {
-                    var msg = "Bitte erstelle dein Profil erneut."
-                } else {
-                    var msg = "Erstelle dein Profil erneut."
+            catch (e) {await step.context.sendActivity(e)}
+            
+            try {
+                if (!validation) {
+                    if(treatment.selfReference == true) { var msg = "Sorry, das habe ich nicht verstanden." }
+                    else { var msg = "Die Eingabe wurde nicht erkannt."}
+                    await sendWithDelay(msg, step);
+                    return await step.replaceDialog('displayProfile');
                 }
-                
-                await sendWithDelay(msg, step);
-                return await step.replaceDialog('deleteProfile');
             }
+            catch (e) {await step.context.sendActivity(e)}
+            try {
+                // If profile incorrect, delete profile and recreate
+                if (validation.localeCompare("Nein") == 0) {
+                    // Delete Profile 
+                    if (treatment.civility == true) {
+                        var msg = "Bitte erstelle dein Profil erneut."
+                    } else {
+                        var msg = "Erstelle dein Profil erneut."
+                    }
+                    
+                    await sendWithDelay(msg, step);
+                    return await step.replaceDialog('deleteProfile');
+                }
+            }
+            catch (e) {await step.context.sendActivity(e)}
             // Loop main menu or go to next dialog (depending on test mode)
             if (testing == true) {
                 // Return to main dialog                
@@ -788,10 +810,13 @@ class MyBot {
         // Functions for Risk Assessment
 
         async presentRiskCards (step) {
+
             // Read UserData from DB
             var user = await this.memoryStorage.read([this.userID]);
+            
+            var roundCounterTemp = ""
             try {
-                var roundCounterTemp = user[this.userID].riskData.roundCounter;
+                roundCounterTemp = user[this.userID].riskData.roundCounter;
             }
             catch (e) {
                 roundCounterTemp = "";
@@ -799,7 +824,11 @@ class MyBot {
 
             // Überprüfen, ob Spiel bereits läuft, falls nicht, neue Runde starten 
             if (!roundCounterTemp) {
-                user[this.userID].riskData.roundCounter = 1;
+
+                try {
+                    user[this.userID].riskData.roundCounter = 1;
+                }
+                catch (e) { await step.context.sendActivity(e) }
                 if (treatment.selfReference == true) {
                     var msg = "Bevor wir uns deinem Investmentportfolio widmen, werde ich zunächst **dein Risikoverhalten** ermitteln."
                 } else {
@@ -827,6 +856,7 @@ class MyBot {
                 await sendWithDelay(msg, step);               
             }
 
+            
             // If RiskAssessment already finished, notify user and go back to main menu
             if (user[this.userID].riskData.riskAssessmentComplete == true) {
                 var msg = `Dein Risikoverhalten wurde bereits ermittelt. Du bist **${user[this.userID].riskData.riskDescription}**.`;
@@ -1641,7 +1671,7 @@ class MyBot {
         }
     
         // Save changes to the user state.
-        await this.userState.saveChanges(turnContext);
+        //await this.userState.saveChanges(turnContext);
 
         // End this turn by saving changes to the conversation state.
         await this.conversationState.saveChanges(turnContext);
