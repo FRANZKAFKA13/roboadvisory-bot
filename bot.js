@@ -222,18 +222,18 @@ const treatment = {
     // Different cues on / off
     responseTimeFix: false,
     responseTimeVar: false,
-    introduction: false,
-    selfReference: false,
-    civility: false,
-    rememberName: false,
+    introduction: true,
+    selfReference: true,
+    civility: true,
+    rememberName: true,
     initiation: true,
     smallTalk: false,
     apologizePraise: false,
 }
 
 // Activates or deactivates the advisory dialog and payout dialog (split in experiment)
-const advisoryDialog = true;
-const payoutDialog = false;
+const advisoryDialog = false;
+const payoutDialog = true;
 
 // If this is activated, each dialog can be selected independently
 const testing = false;
@@ -292,7 +292,8 @@ class MyBot {
                 loss1: "",
                 loss2: "",
             },
-
+            
+            endRepeat: "",
             eTag: '*',
         } 
 
@@ -1443,7 +1444,12 @@ class MyBot {
 
             // Praise / Apologize 
             if (treatment.apologizePraise) {
-                if (user[this.userID].investData.choice.localeCompare(user[this.userID].investData.win1) || user[this.userID].investData.choice.localeCompare(user[this.userID].investData.win2)) {
+                try {
+                    var choiceTemp = user[this.userID].investData.choice;
+                }
+                catch (e) { await step.context.sendActivity(e)}
+
+                if (choiceTemp.localeCompare(user[this.userID].investData.win1) || choiceTemp.localeCompare(user[this.userID].investData.win2)) {
                     var msg = `Herzlichen Glückwunsch, ${user[this.userID].name}, zu deinem Gewinn! Du hast dein Können als Investor bewiesen.`
                 } else {
                     var msg = `${user[this.userID].name}, es tut mir wirklich Leid, dass die Aktienkurse deiner Aktie gefallen sind. Dein nächstes Investment wird sich bestimmt besser entwickeln.`
@@ -1479,14 +1485,23 @@ class MyBot {
             /// Read UserData from DB
             var user = await this.memoryStorage.read([this.userID]);
 
-            if (!user[this.userID].endRepeat) {
+            try {
+                var endRepeatTemp = user[this.userID].endRepeat;
+            }
+            catch (e) { 
+                await step.context.sendActivity(e); 
+                endRepeatTemp = "";
+            }
+
+            if (!endRepeatTemp) {
+                user[this.userID].endRepeat = true;
                 if (treatment.rememberName == true) {
                     var msg = `Danke, ${user[this.userID].name}, für deine Zeit. Der Beratungsprozess ist nun abgeschlossen.`;
                 } else {
                     var msg = `Der Beratungsprozess ist nun abgeschlossen.`;
                 }
                 await sendWithDelay(msg, step);
-                user[this.userID].endRepeat = true;
+                
             }
                         
             // Write userData to DB
