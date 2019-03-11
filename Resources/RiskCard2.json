@@ -31,11 +31,11 @@
                                    "items": [
                                        {
                                            "type": "TextBlock",
-                                           "text": "2,00€, Chance: 20%"
+                                           "text": "2000 GE, Chance: 20%"
                                        },
                                        {
                                            "type": "TextBlock",
-                                           "text": "1,60€, Chance: 80%"
+                                           "text": "1600 GE, Chance: 80%"
                                        }
                                    ]
                                }
@@ -55,13 +55,13 @@
                                    "items": [
                                        {
                                            "type": "TextBlock",
-                                           "text": "3,85€, Chance: 20%"
+                                           "text": "3850 GE, Chance: 20%"
                                        }
                                    ]
                                },
                                {
                                    "type": "TextBlock",
-                                   "text": "0,10€, Chance: 80%"
+                                   "text": "100 GE, Chance: 80%"
                                }
                            ],
                            "width": "stretch"

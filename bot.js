@@ -423,8 +423,7 @@ class MyBot {
         }
         
 
-        //await step.context.sendActivity("userID: " + this.userID);
-        await step.context.sendActivity("userID: " + userID);
+        //await step.context.sendActivity("userID: " + userID);
 
 
 
@@ -432,7 +431,7 @@ class MyBot {
         try {
             user = await this.memoryStorage.read([userID]);
             //await step.context.sendActivity("User Object read from DB: "+ user);
-            await step.context.sendActivity("User Object read from DB: \n" + util.inspect(user, false, null, false /* enable colors */));
+            //await step.context.sendActivity("User Object read from DB: \n" + util.inspect(user, false, null, false /* enable colors */));
         }
         catch(e) {
             await step.context.sendActivity("Reading user data failed");
@@ -441,11 +440,11 @@ class MyBot {
 
         // If user is new, create UserData object and save it to DB and read it for further use
         if(isEmpty(user)) {
-            await step.context.sendActivity("New User Detected");
+            //await step.context.sendActivity("New User Detected");
             changes[userID] = emptyUserData;
             await this.memoryStorage.write(changes);
             user = await this.memoryStorage.read([userID]);
-            await step.context.sendActivity("New user data:\n" + util.inspect(user, false, null, false /* enable colors */));
+            //await step.context.sendActivity("New user data:\n" + util.inspect(user, false, null, false /* enable colors */));
         }
 
         
@@ -1190,9 +1189,9 @@ class MyBot {
             
             if (!user[userID].investData.repeat){
                 if (treatment.selfReference == true){
-                    var msg = "Da nun alle von dir relevanten Daten erfasst sind und dein Risikoprofil ermittelt ist, können wir uns zusammen um deine **Investitionsentscheidung** kümmern. Du hast ein Budget von **3,00€** zur Verfügung.";
+                    var msg = "Da nun alle von dir relevanten Daten erfasst sind und dein Risikoprofil ermittelt ist, können wir uns zusammen um deine **Investitionsentscheidung** kümmern. Du hast ein Budget von **3000 Geldeinheiten** zur Verfügung.";
                 } else {
-                    var msg = "Da nun alle von dir relevanten Daten erfasst sind und dein Risikoprofil ermittelt ist, kommt als nächster Schritt die **Investitionsentscheidung**. Du hast ein Budget von **3,00€** zur Verfügung.";
+                    var msg = "Da nun alle von dir relevanten Daten erfasst sind und dein Risikoprofil ermittelt ist, kommt als nächster Schritt die **Investitionsentscheidung**. Du hast ein Budget von **3000 Geldeinheiten** zur Verfügung.";
                 }
                 
                 await sendWithDelay(msg, step);
@@ -1404,7 +1403,7 @@ class MyBot {
 
             // Add buttons and text to hero card
             const card = CardFactory.heroCard('', undefined, buttons, { text: '' });
-            var msg = "In **welches Unternehmen** möchtest du dein vorhandenes Investitionsbudget von **3,00€** investieren? Du wirst in einem Jahr an dem **Gewinn** oder **Verlust** des Unternehmens beteiligt werden.";
+            var msg = "In **welches Unternehmen** möchtest du dein vorhandenes Investitionsbudget von **3000 Geldeinheiten** investieren? Du wirst in einem Jahr an dem **Gewinn** oder **Verlust** des Unternehmens beteiligt werden.";
             await sendWithDelay(msg, step);
             // Add card to reply and send
             reply.attachments = [card];
@@ -1620,21 +1619,21 @@ class MyBot {
             
             // Determine user's payout, send information to user and save in investmentData
             if (user[userID].investData.choice.localeCompare(user[userID].investData.win1) == 0) {
-                var msg = `Du hast in die **${user[userID].investData.choice}** investiert. Deine Investitionssumme von 3,00€ hat sich somit auf **4,00€ erhöht** und du hast **1,00€ Gewinn gemacht**.`;
+                var msg = `Du hast in die **${user[userID].investData.choice}** investiert. Deine Investitionssumme von 3000 Geldeinheiten hat sich somit auf **4000 Geldeinheiten erhöht** und du hast **1000 Geldeinheiten Gewinn gemacht**.`;
                 await sendWithDelay(msg, step);  
-                user[userID].investData.payout = "7,00€";
+                user[userID].investData.payout = "Du bekommst 7000 Geldeinheiten = 7,00€ ausgezahlt.";
             } else if (user[userID].investData.choice.localeCompare(user[userID].investData.win2) == 0) {
-                var msg = `Du hast in die **${user[userID].investData.choice}** investiert. Deine Investitionssumme von 3,00€ hat sich somit auf **3,50€ erhöht** und du hast **0,50€ Gewinn gemacht**.`;
+                var msg = `Du hast in die **${user[userID].investData.choice}** investiert. Deine Investitionssumme von 3000 Geldeinheiten hat sich somit auf **3500 Geldeinheiten erhöht** und du hast **500 Geldeinheiten Gewinn gemacht**.`;
                 await sendWithDelay(msg, step);
-                user[userID].investData.payout = "6,50€";
+                user[userID].investData.payout = "Du bekommst 6500 Geldeinheiten = 6,50€ ausgezahlt.";
             } else if (user[userID].investData.choice.localeCompare(user[userID].investData.loss1) == 0) {
-                var msg = `Du hast in die **${user[userID].investData.choice}** investiert. Deine Investitionssumme von 3,00€ hat sich somit auf **2,50€ verringert** und du hast **0,50€ Verlust gemacht**.`;
+                var msg = `Du hast in die **${user[userID].investData.choice}** investiert. Deine Investitionssumme von 3000 Geldeinheiten hat sich somit auf **2500 Geldeinheiten verringert** und du hast **500 Geldeinheiten Verlust gemacht**.`;
                 await sendWithDelay(msg, step);
-                user[userID].investData.payout = "5,50€";
+                user[userID].investData.payout = "Du bekommst 5500 Geldeinheiten = 5,50€ ausgezahlt.";
             } else if (user[userID].investData.choice.localeCompare(user[userID].investData.loss2) == 0) {
-                var msg = `Du hast in die **${user[userID].investData.choice}** investiert. Deine Investitionssumme von 3,00€ hat sich somit auf **2,00€ verringert** und du hast **1,00€ Verlust gemacht**.`;
+                var msg = `Du hast in die **${user[userID].investData.choice}** investiert. Deine Investitionssumme von 3000 Geldeinheiten hat sich somit auf **2000 Geldeinheiten verringert** und du hast **1000 Geldeinheiten Verlust gemacht**.`;
                 await sendWithDelay(msg, step);
-                user[userID].investData.payout = "5,00€";
+                user[userID].investData.payout = "Du bekommst 5000 Geldeinheiten = 5,00€ ausgezahlt.";
             }
 
             // Praise / Apologize 
@@ -1642,13 +1641,18 @@ class MyBot {
                 try {
                     var choiceTemp = user[userID].investData.choice;
                 }
-                catch (e) { await step.context.sendActivity(e)}
+                catch (e) {}
 
-                if (choiceTemp.localeCompare(user[userID].investData.win1) || choiceTemp.localeCompare(user[userID].investData.win2)) {
-                    var msg = `Herzlichen Glückwunsch, ${user[userID].name}, zu deinem Gewinn! Du hast dein Können als Investor bewiesen.`
+                if (choiceTemp.localeCompare(user[userID].investData.win1) == 0 || choiceTemp.localeCompare(user[userID].investData.win2) == 0) {
+                    var female = "weiblich";
+                    if (female.localeCompare(user[userID].gender) == 0) {
+                        var msg = `Herzlichen Glückwunsch, **${user[userID].name}**, zu deinem Gewinn! **Du hast dein Können als Investorin bewiesen**.`
+                    }
+                        var msg = `Herzlichen Glückwunsch, **${user[userID].name}**, zu deinem Gewinn! **Du hast dein Können als Investor bewiesen**.`
                 } else {
                     var msg = `${user[userID].name}, es tut mir wirklich Leid, dass die Aktienkurse deiner Aktie gefallen sind. Dein nächstes Investment wird sich bestimmt besser entwickeln.`
                 }
+                await sendWithDelay(msg, step);
             }
 
             // Write userData to DB
