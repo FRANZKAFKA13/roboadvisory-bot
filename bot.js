@@ -103,11 +103,11 @@ const userData = {
         tag: "Höchster Bildungsabschluss",
         prompt: "Was ist dein höchster Bildungsabschluss?",
     },
-    major: {
+/*     major: {
         tag: "Studiengang",
         prompt: "Was studierst du?",
         prompt_other: "Dein Studiengang war wohl **nicht in der Liste**. Wie heißt dein Studiengang?",
-    },
+    }, */
 }
 
 
@@ -317,7 +317,7 @@ class MyBot {
             this.promptForAge.bind(this),
             this.promptForGender.bind(this),
             this.promptForEducation.bind(this),
-            this.promptForMajor.bind(this),
+           // this.promptForMajor.bind(this),
             this.completeProfile.bind(this)
         ]));
 
@@ -684,6 +684,27 @@ class MyBot {
             var user = await this.memoryStorage.read([userID]);
 
             // Before saving entry, check if it already exists
+            if(!user[userID].education){
+                var validation = await validateInput(step.result, educations);
+                if (validation) {
+                    user[userID].education = validation;
+                } else {
+                    if(treatment.selfReference == true) { var msg = "Sorry, das habe ich nicht verstanden. Bitte versuche es erneut." }
+                    else { var msg = "Die Eingabe wurde nicht erkannt. Versuche es erneut."}
+                    await sendWithDelay(msg, step);
+
+                    return await step.replaceDialog('createProfile', userID);
+                }
+                
+                // Write userData to DB
+                changes[userID] = user[userID];
+                try {
+                    await this.memoryStorage.write(changes);
+                }
+                catch (e) {}
+            }
+
+            /* // Before saving entry, check if it already exists
             if (!user[userID].major){
                 var validation = await validateInput(step.result, majors);
                 if (validation) {
@@ -715,7 +736,7 @@ class MyBot {
                     
                     return await step.replaceDialog('createProfile', userID);
                 }
-            }
+            } */
             if (!user[userID].complete){
                 console.log('test1');
                 // Read UserData from DB
@@ -1555,16 +1576,16 @@ class MyBot {
             var statements = [];
             for (var i = 0; i < 3; i++) {
                 if (outcomes[i].localeCompare("win1") == 0) {
-                    statements[i] = `Der Wert der **${investmentData.companies[user[userID].investData.order[i]]}** hat sich um 21,4% **erhöht**.`
+                    statements[i] = `Der Wert der **${investmentData.companies[user[userID].investData.order[i]]}** hat sich um 33% **erhöht**.`
                     user[userID].investData.win1 = investmentData.companies[user[userID].investData.order[i]];
                 } else if (outcomes[i].localeCompare("win2") == 0) {
-                    statements[i] = `Der Wert der **${investmentData.companies[user[userID].investData.order[i]]}** hat sich um 14,3% **erhöht**.`
+                    statements[i] = `Der Wert der **${investmentData.companies[user[userID].investData.order[i]]}** hat sich um 17% **erhöht**.`
                     user[userID].investData.win2 = investmentData.companies[user[userID].investData.order[i]];
                 } else if (outcomes[i].localeCompare("loss1") == 0) {
-                    statements[i] = `Der Wert der **${investmentData.companies[user[userID].investData.order[i]]}** hat sich um 14,3% **verringert**.`
+                    statements[i] = `Der Wert der **${investmentData.companies[user[userID].investData.order[i]]}** hat sich um 17% **verringert**.`
                     user[userID].investData.loss1 = investmentData.companies[user[userID].investData.order[i]];
                 } else if (outcomes[i].localeCompare("loss2") == 0) {
-                    statements[i] = `Der Wert der **${investmentData.companies[user[userID].investData.order[i]]}** hat sich um 21,5% **verringert**.`
+                    statements[i] = `Der Wert der **${investmentData.companies[user[userID].investData.order[i]]}** hat sich um 33% **verringert**.`
                     user[userID].investData.loss2 = investmentData.companies[user[userID].investData.order[i]];
                 }
             }
