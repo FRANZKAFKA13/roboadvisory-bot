@@ -199,11 +199,11 @@ const genders = {
 const yesno = {
     yes: { 
         solution: "Ja",
-        possibilities: ['ja', 'yes', 'jop', 'jupp', 'jup', 'klar', 'si', 'oui', 'klaro', 'jaha', 'jaa', 'ya', 'yup', 'yas'],
+        possibilities: ['jip', 'jib', 'jap', 'yep', 'ja', 'yes', 'jop', 'jupp', 'jup', 'klar', 'si', 'oui', 'klaro', 'jaha', 'jaa', 'ya', 'yup', 'yas'],
     },
     no: {
         solution: "Nein",
-        possibilities: ['nein', 'nö', 'nop', 'nope', 'no', 'auf keinen fall', 'ne', 'nee', 'niemals'],
+        possibilities: ['nein', 'nö', 'nop', 'nope', 'no', 'auf keinen fall', 'ne', 'nee', 'niemals', 'nöp'],
     },
 }
 
@@ -221,15 +221,15 @@ const investmentData = {
 const treatment = {
     // Different cues on / off
     responseTimeFix: false,
-    responseTimeVar: false,
+    responseTimeVar: true,
     introduction: true,
     selfReference: true,
     civility: true,
     rememberName: true,
     initiation: true,
     smallTalk: false,
-    apologizePraise: false,
-    gender: false,
+    apologizePraise: true,
+    gender: true,
 }
 
 // Activates or deactivates the advisory dialog and payout dialog (split in experiment)
@@ -758,7 +758,6 @@ class MyBot {
                 }
                 await sendWithDelay(msg, step);
             } else {
-                console.log('test3');
                 var msg = `**${user[userID].name}**, du hast dein Profil bereits ausgefüllt.`;
                 await sendWithDelay(msg, step);
             }
@@ -916,6 +915,15 @@ class MyBot {
             // Read UserData from DB
             var user = await this.memoryStorage.read([userID]);
             
+
+            var repeatTemp;
+            try {
+                repeatTemp = user[userID].riskData.repeat;
+            }
+            catch (e) {
+                repeatTemp = false;
+            }
+            
             var roundCounterTemp = ""
             try {
                 roundCounterTemp = user[userID].riskData.roundCounter;
@@ -930,7 +938,7 @@ class MyBot {
                 try {
                     user[userID].riskData.roundCounter = 1;
                 }
-                catch (e) { await step.context.sendActivity(e) }
+                catch (e) { }
                 if (treatment.selfReference == true) {
                     var msg = "Bevor wir uns deinem Investmentportfolio widmen, werde ich zunächst **dein Risikoverhalten** ermitteln."
                 } else {
@@ -957,10 +965,14 @@ class MyBot {
                 eine festgelegte Auszahlung haben.";
                 await sendWithDelay(msg, step);               
             }
-
+            
+            try {
+                var completeTemp = user[userID].riskData.riskAssessmentComplete;
+            }
+            catch(e) {console.log("hi")}
             
             // If RiskAssessment already finished, notify user and go back to main menu
-            if (user[userID].riskData.riskAssessmentComplete == true) {
+            if (completeTemp == true) {
                 var msg = `Dein Risikoverhalten wurde bereits ermittelt. Du bist **${user[userID].riskData.riskDescription}**.`;
                 await sendWithDelay(msg, step);
                 if (testing == true) {
@@ -970,9 +982,8 @@ class MyBot {
                     return await step.beginDialog('investmentDecision', userID);
                 }
                 // Only present card, if round is not a repeated round
-            } else if (user[userID].riskData.repeat == true){
+            } else if (repeatTemp == true){
                 user[userID].riskData.repeat = false;
-                await step.context.sendActivity("");
             } else {
                 // Present Adaptive Card 1-10 for gathering User Input
                 await step.context.sendActivity({
@@ -980,6 +991,9 @@ class MyBot {
                     attachments: [CardFactory.adaptiveCard(riskCard[user[userID].riskData.roundCounter])]
                 });
             }
+            
+            
+            
             // Write userData to DB
             changes[userID] = user[userID];
             try {
