@@ -234,7 +234,7 @@ const treatment = {
 
 // Activates or deactivates the advisory dialog and payout dialog (split in experiment)
 const advisoryDialog = false;
-const payoutDialog = true;
+const payoutDialog = false;
 
 // If this is activated, each dialog can be selected independently
 const testing = false;
@@ -383,74 +383,25 @@ class MyBot {
         console.log("Welcome User Dialog");
 
         // Get userId from onTurn()
-        var userID = step.options;
-        
-        
+        var userID = step.options[0];
+        var mode = step.options[1];
 
+        console.log(userID);
+        console.log(mode);
+        
+        const conversationData = await this.conversationDataAccessor.get(step.context, {});
         const user = await this.userDataAccessor.get(step.context, {});
-        console.log("User from Middleware");
+
+        console.log("User in welcome dialog");
         console.log(util.inspect(user, false, null, false ));
+
+        console.log("conversationData from Middleware");
+        console.log(util.inspect(conversationData, false, null, false ));
         
 
-        /* if (!user.userID) {
-            user.name = "";
-            user.age = "";
-            user.gender = "";
-            user.education = "";
 
-            user.roundCounter = "";
-            user.riskAssessmentComplete = "";
-            user.riskDescription = "";
-            user.riskrepeat = "";
-            user.riskchoices = "";
-            
-            
-
-            user.repeat = "";
-            user.order = "";
-            user.choice = "";
-            user.follow = "";
-            user.win1 = "";
-            user.win2 = "";
-            user.loss1 = "";
-            user.loss2 = ""; 
-            
-
-            user.deleted == "";
-            user.endRepeat = "";
-            user.userID = userID;
-        } */
-        console.log(util.inspect(user, false, null, false ));
         await this.userDataAccessor.set(step.context, user);
-
- 
-        
-
-        //await step.context.sendActivity("userID: " + userID);
-
-
-/* 
-        // Read userData object
-        try {
-            user = await this.memoryStorage.read();
-            //await step.context.sendActivity("User Object read from DB: "+ user);
-            //await step.context.sendActivity("User Object read from DB: \n" + util.inspect(user, false, null, false ));
-        }
-        catch(e) {
-            await step.context.sendActivity("Reading user data failed");
-            await step.context.sendActivity(e);
-        }
-
-        // If user is new, create UserData object and save it to DB and read it for further use
-        if(isEmpty(user)) {
-            //await step.context.sendActivity("New User Detected");
-            changes = emptyUserData;
-            await this.memoryStorage.write(changes);
-            user = await this.memoryStorage.read();
-            //await step.context.sendActivity("New user data:\n" + util.inspect(user, false, null, false ));
-        } */
-
-        
+        await this.conversationDataAccessor.set(step.context, conversationData);
         
 
 
@@ -486,8 +437,11 @@ class MyBot {
             
             // Read UserData from DB
             const user = await this.userDataAccessor.get(step.context, {});
+            console.log("User in name dialog");
+            console.log(util.inspect(user, false, null, false ));
             
-            
+            await this.userDataAccessor.set(step.context, user);
+
             // Before prompting, check if value already exists
             if(!user.name){
                 if (user.deleted == true) {
@@ -527,6 +481,8 @@ class MyBot {
 
             // Read UserData from DB
             const user = await this.userDataAccessor.get(step.context, {});
+            console.log("User in age dialog");
+            console.log(util.inspect(user, false, null, false ));
             
             
             // Before saving entry, check if it already exists
@@ -563,6 +519,9 @@ class MyBot {
             // Read UserData from DB
             const user = await this.userDataAccessor.get(step.context, {});
 
+            console.log("User in Gender dialog");
+            console.log(util.inspect(user, false, null, false ))
+
             // Before saving entry, check if it already exists
             if(!user.age){
                 // Validate entered age
@@ -595,8 +554,12 @@ class MyBot {
             var userID = step.options;
             var changes = {};
 
+
             // Read UserData from DB
             const user = await this.userDataAccessor.get(step.context, {});
+
+            console.log("User in education dialog nach pull");
+            console.log(util.inspect(user, false, null, false ))
 
             // Before saving entry, check if it already exists
             if(!user.gender){
@@ -633,6 +596,9 @@ class MyBot {
 
             // Read UserData from DB
             const user = await this.userDataAccessor.get(step.context, {});
+
+            console.log("Gender sollte jetzt hier stehen");
+            console.log(user.gender);
 
             // Before saving entry, check if it already exists
             if(!user.education){
@@ -1621,6 +1587,8 @@ class MyBot {
                 statement = "" + statement + "\n" + statements[i];
             }
 
+            await sendWithDelay(statement, step);  
+
             // Write userData to DB
             await this.userDataAccessor.set(step.context, user);
 
@@ -1868,7 +1836,7 @@ class MyBot {
      */
     async onTurn(turnContext) {
         let dc = await this.dialogSet.createContext(turnContext);
-        const user = await this.userDataAccessor.get(turnContext, {});
+        
 
         //await logMessageText(this.memoryStorage, turnContext, this.userState);
 
@@ -1898,26 +1866,40 @@ class MyBot {
                         // Read ConversationData from DB
                         const conversationData = await this.conversationDataAccessor.get(turnContext, {});
 
+                        const user = await this.userDataAccessor.get(turnContext, {});
+                        console.log("Joined User:");
+                        console.log(util.inspect(user, false, null, false ));
+
                         // Get userID which is either IDA or IDR for advisory or result
-                        var userID = turnContext.activity.membersAdded[idx].id;
+                        var URLparam = turnContext.activity.membersAdded[idx].id;
 
-                        //userID = "1234";
-
-                       /*  userID = string1.substring(0, string1.length-1);
-                        var id2 = string2.substring(0, string2.length-1);
-
-                        var mode1 = string1.substring(string1.length-1, string1.length);
-                        var mode2 = string2.substring(string2.length-1, string2.length); */
+                        //URLparam = "12341234R";
                         
+                        // Set userID
+                        if (!user.userID) {
+                            console.log("UserID wird eingetragen");
+                            user.userID = URLparam.substring(0, URLparam.length-1);
+                        }
+
+                        console.log("Joined User nach ID eintragung:");
+                        console.log(util.inspect(user, false, null, false ));
+        
+                        // Get last character which determines mode
+                        conversationData.mode = URLparam.substring(URLparam.length-1, URLparam.length);
+                        
+                        await this.userDataAccessor.set(turnContext, user);
+                        await this.conversationDataAccessor.set(turnContext, conversationData);
                         
                         
                         // Route to correct dialog depending on treatment and bot type
-                        if (treatment.initiation == true && advisoryDialog == true) {
-                            await dc.beginDialog('welcome', userID);
+                        if (treatment.initiation == true && conversationData.mode.localeCompare("A") == 0) {
+                            console.log("Advisory Modus");
+                            await dc.beginDialog('welcome', [user.userID, conversationData.mode]);
                         } else if (treatment.initiation == false) {
-                            await dc.beginDialog('startBot', userID);
-                        } else if (treatment.initiation == true && advisoryDialog == false && payoutDialog == true) {
-                            await dc.beginDialog('investmentResult', userID)
+                            await dc.beginDialog('startBot', [user.userID, conversationData.mode]);
+                        } else if (treatment.initiation == true && conversationData.mode.localeCompare("R") == 0) {
+                            console.log("Result Modus");
+                            await dc.beginDialog('investmentResult', user.userID)
                         }
                     }
                     if (turnContext.activity.membersAdded[idx].id === turnContext.activity.recipient.id) {
