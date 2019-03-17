@@ -18,6 +18,11 @@ require('dotenv').config({ path: ENV_FILE });
 
 // Einbindung externer Datenbank
 const { CosmosDbStorage } = require('botbuilder-azure');
+const { BlobStorage } = require('botbuilder-azure');
+
+// Include chatlog functionality
+const { AzureBlobTranscriptStore  } = require('botbuilder-azure');
+const { TranscriptLoggerMiddleware } = require('botbuilder-core');
 
 // Import required bot services. See https://aka.ms/bot-services to learn more about the different parts of a bot.
 const { BotFrameworkAdapter, ConversationState, UserState, MemoryStorage, AutoSaveStateMiddleware } = require('botbuilder');
@@ -33,12 +38,27 @@ const memoryStorageLocal = new MemoryStorage();
 
 
 //Add CosmosDB (greift auf Informationen in .env-Datei zu)
-const memoryStorage = new CosmosDbStorage({
+/* const memoryStorage = new CosmosDbStorage({
     serviceEndpoint: process.env.ACTUAL_SERVICE_ENDPOINT, 
     authKey: process.env.ACTUAL_AUTH_KEY, 
     databaseId: process.env.DATABASE,
     collectionId: process.env.COLLECTION
+}) */
+
+
+// Add Blobstorage
+const memoryStorage = new BlobStorage({
+    //containerName: 'roboadvisory-blob',
+    //storageAccountOrConnectionString: 'DefaultEndpointsProtocol=https;AccountName=roboadvisorytabledb;AccountKey=jwe+SHecBWzvrlTCVBYf9P20tpmzxK+12ISicOOnqSWQPiTh/bCpH5vU/vdS79A01+cZwRdReQRYsyluucBMbA==;EndpointSuffix=core.windows.net',
+    containerName: process.env.CONTAINER_NAME, 
+    storageAccountOrConnectionString: process.env.CONNECTION_STRING, 
 })
+
+// The transcript store has methods for saving and retrieving bot conversation transcripts.
+let transcriptStore = new AzureBlobTranscriptStore({
+    containerName: process.env.CONTAINER_NAME_TRANSCRIPT, 
+    storageAccountOrConnectionString: process.env.CONNECTION_STRING,
+});
 
 // ConversationState and UserState
 const conversationState = new ConversationState(memoryStorageLocal);
@@ -98,6 +118,13 @@ const adapter = new BotFrameworkAdapter({
    appId: endpointConfig.appId || process.env.microsoftAppID,
    appPassword: endpointConfig.appPassword || process.env.microsoftAppPassword
 });
+
+
+// Create the middleware layer responsible for logging incoming and outgoing activities
+// into the transcript store.
+var transcriptMiddleware = new TranscriptLoggerMiddleware(transcriptStore);
+adapter.use(transcriptMiddleware);
+
 
 // Scheinbar nötig für CosmosDB wirft bei local speicher aber error
 adapter.use(new AutoSaveStateMiddleware(conversationState));

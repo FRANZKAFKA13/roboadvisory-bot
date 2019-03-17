@@ -1873,7 +1873,7 @@ class MyBot {
                         // Get userID which is either IDA or IDR for advisory or result
                         var URLparam = turnContext.activity.membersAdded[idx].id;
 
-                        //URLparam = "12341234R";
+                        URLparam = "0000123R";
                         
                         // Set userID
                         if (!user.userID) {
