@@ -222,14 +222,14 @@ const treatment = {
     // Different cues on / off
     responseTimeFix: false,
     responseTimeVar: false,
-    introduction: true,
-    selfReference: true,
-    civility: true,
-    rememberName: true,
+    introduction: false,
+    selfReference: false,
+    civility: false,
+    rememberName: false,
     initiation: true,
     smallTalk: false,
-    apologizePraise: true,
-    gender: true,
+    apologizePraise: false,
+    gender: false,
 }
 
 // Activates or deactivates the advisory dialog and payout dialog (split in experiment)
@@ -770,7 +770,8 @@ class MyBot {
             try {
                 var validation = await validateInput(step.result, yesno);
             }
-            catch (e) {}
+            catch (e) {console.log(e)}
+
             console.log(validation);
             try {
                 if (!validation) {
@@ -796,7 +797,8 @@ class MyBot {
                     return await step.replaceDialog('deleteProfile', userID);
                 }
             }
-            catch (e) {await step.context.sendActivity(e)}
+            catch (e) {console.log(e)}
+
             // Loop main menu or go to next dialog (depending on test mode)
             if (testing == true) {
                 // Return to main dialog                
@@ -1071,8 +1073,8 @@ class MyBot {
                 user.riskchoices.push(choice);
             }
             // Make choice transparent for user
-            var msg = `Du hast dich in **Runde ${roundPlayed}** für **Spiel ${choice}** entschieden.`;
-            await sendWithDelay(msg, step);
+            await step.context.sendActivity(`Du hast dich in **Runde ${roundPlayed}** für **Spiel ${choice}** entschieden.`);
+            
 
            
             // Repeat until all games are played or until B is played
@@ -1425,7 +1427,7 @@ class MyBot {
                 var msg = "Nun heißt es warten, bis die Aktienkurse sich verändern. Ob du Gewinn oder Verlust gemacht hast, wirst du später erfahren."
 
                 await delay(msg, step).then(async function() { 
-                    return await step.prompt('choicePrompt', msg , ['Abschließen']);
+                    return await step.prompt('choicePrompt', msg , ['Beratung abschließen']);
                 });
                
             }
@@ -1450,15 +1452,25 @@ class MyBot {
             var changes = {};
 
             // Read saved user from Database
-            var userImport = await this.memoryStorage.read([userID]);
+            var userImport;
+            try {
+                userImport = await this.memoryStorage.read([userID]);
+                //throw "Fehler";
+            }
+            catch(e) {
+                console.error(e);
+                await console.log(Date(Date.now()));
+                // retry after 3 seconds
+                await timeout(3000);
+                userImport = await this.memoryStorage.read([userID]);
+                await console.log(Date(Date.now()));
+            }
+
             userImport = userImport[userID];
-            console.log("savedUser");
+            console.log("imported savedUser");
             console.log(util.inspect(userImport, false, null, false ));
 
-            // Read UserData from DB
-            //const user = await this.userDataAccessor.get(step.context, {});
-
-            // Copy relevant data
+            // Copy relevant data from DB to current user object
             const user = userImport;
            
 
@@ -1723,29 +1735,33 @@ class MyBot {
             // Write userData to DB
             await this.userDataAccessor.set(step.context, user);
 
-            // Inform user and pause dialog
-            await delay("Bis bald!", step).then(async function() { 
-                return await step.prompt('textPrompt', "Bis bald!");
-            });
+            // Farewell and pause dialog
+            if (treatment.introduction == true) {
+                await delay("Bis bald!", step).then(async function() { 
+                    return await step.prompt('textPrompt', "Bis bald!");
+                });
+            }
+            
 
             console.log("User vor speichern in DB");
             console.log(user);
 
             // Write User Object to DB
             changes[userID] = user;
-            await this.memoryStorage.write(changes);
-
-           /*  if (!user.payout) {
-                changes[userID] = user;
+            try {
                 await this.memoryStorage.write(changes);
-            } else {
-                var userImport = await this.memoryStorage.read([userID]);
-                userImport[userID].payout = user.payout;
-                console.log(userImport[userID]);
-                await this.memoryStorage.write(userImport);
-            } */
-            
+                //throw "Fehler";
+            }
+            catch(e) {
+                console.error(e);
+                await console.log(Date(Date.now()));
+                // retry after 2 seconds
+                await timeout(3000);
+                await this.memoryStorage.write(changes);
+                await console.log(Date(Date.now()));
+            }           
         }
+
         async loopEnd (step) {
             // Get userID from prior step and clear changes
             var userID = step.options;
@@ -1873,7 +1889,7 @@ class MyBot {
                         // Get userID which is either IDA or IDR for advisory or result
                         var URLparam = turnContext.activity.membersAdded[idx].id;
 
-                        URLparam = "0000123R";
+                        URLparam = "0000123A";
                         
                         // Set userID
                         if (!user.userID) {
@@ -2113,4 +2129,9 @@ function isEmpty(obj) {
             return false;
     }
     return true;
+}
+
+// Function that enables usage of setTimeout in async functions by returning a promise
+function timeout(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
 }

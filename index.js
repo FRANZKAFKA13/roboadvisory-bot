@@ -141,7 +141,7 @@ adapter.onTurnError = async (context, error) => {
     //console.error(`\n [onTurnError]: ${error}`);
     // Send a message to the user
     //context.sendActivity("error: " + error);
-    context.sendActivity(util.inspect(error, false, null, false /* enable colors */));
+    console.log(util.inspect(error, false, null, false /* enable colors */));
     //context.sendActivity(`Oops. Something went wrong!`);
     
     /* // Clear out state
