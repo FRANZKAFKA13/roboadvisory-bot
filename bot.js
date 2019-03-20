@@ -488,7 +488,7 @@ class MyBot {
             // Before saving entry, check if it already exists
             if(!user.name) {
                 user.name = step.result;
-
+                
                 // Write userData to DB
                 await this.userDataAccessor.set(step.context, user);
                 
@@ -648,50 +648,24 @@ class MyBot {
 
                     return await step.replaceDialog('createProfile', userID);
                 }
+
+                
                 
                 // Write userData to DB
                 await this.userDataAccessor.set(step.context, user);
             }
 
-            /* // Before saving entry, check if it already exists
-            if (!user.major){
-                var validation = await validateInput(step.result, majors);
-                if (validation) {
-                    user.major = validation;
-
-                // Write userData to DB
-                changes = user;
-                try {
-                    await this.memoryStorage.write(changes);
-                }
-                catch (e) {}
-
-                } else {
-                    if (treatment.selfReference == true) { var msg = "Sorry, das habe ich nicht verstanden. Bitte probiere einen der folgenden Studiengänge:" }
-                    else { var msg = "Die Eingabe wurde nicht erkannt. Probiere einen Studiengang folgender Liste: "}
-                    await sendWithDelay(msg, step);
-
-                    // Present List of available options
-                    var eintraege = Object.keys(majors);
-                    var size = 0, key, list = "";
-                    for (key in majors) {
-                        if (majors.hasOwnProperty(key)) size++;
-                    }
-                    for (var j = 0; j < size; j++) {
-                        // Get the correct way of spelling the word
-                        list = "" + list  + majors[eintraege[j]]['solution'] + "\n";
-                    }
-                    await sendWithDelay(list, step);
-                    
-                    return await step.replaceDialog('createProfile', userID);
-                }
-            } */
+            
             if (!user.complete){
                 console.log('test1');
                 // Read UserData from DB
                 const user = await this.userDataAccessor.get(step.context, {});
                 // Set user to complete
                 user.complete = true;
+
+                // Save conversation ID
+                user.conversationIds = {};
+                user.conversationIds.advisoryConversationId = step.context.activity.conversation.id;
 
                 // Write userData to DB
                 await this.userDataAccessor.set(step.context, user);
@@ -1343,6 +1317,9 @@ class MyBot {
                 await sendWithDelay(msg, step);
             }
 
+            // Save recommendation
+            user.botRecommendation = investmentData.companies[user.order[1]];
+
             // Write userData to DB
             await this.userDataAccessor.set(step.context, user);
 
@@ -1473,8 +1450,11 @@ class MyBot {
             // Copy relevant data from DB to current user object
             const user = userImport;
            
-
-            
+            // Save ConversationID
+            try {
+                user.conversationIds.resultConversationId = step.context.activity.conversation.id;
+            }
+            catch(e) {}
 
             try {
                 if(user.name) {
@@ -1876,6 +1856,7 @@ class MyBot {
                     // bot was added to the conversation, and the opposite indicates this is a user.
                     if (turnContext.activity.membersAdded[idx].id !== turnContext.activity.recipient.id) {
                         
+                        
                         // Funktionierender Code, wenn WebChat gefixt
                         console.log("User added");
                         
@@ -1889,7 +1870,7 @@ class MyBot {
                         // Get userID which is either IDA or IDR for advisory or result
                         var URLparam = turnContext.activity.membersAdded[idx].id;
 
-                        URLparam = "0000123A";
+                        URLparam = "0000123R";
                         
                         // Set userID
                         if (!user.userID) {
