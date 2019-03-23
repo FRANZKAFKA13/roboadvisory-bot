@@ -1723,9 +1723,13 @@ class MyBot {
 
             
             // Farewell and pause dialog
-            if (treatment.introduction == true) {
+            if (treatment.introduction == true && conversationData.mode.localeCompare("A") == 0) {
                 await delay("Bis bald!", step).then(async function() { 
                     return await step.prompt(CONFIRM_PROMPT2, "Bis bald! Wir schreiben wieder, wenn die Aktienkurse sich verändert haben.");
+                });
+            } else if (treatment.introduction == true && conversationData.mode.localeCompare("R") == 0) {
+                await delay("Bis bald!", step).then(async function() { 
+                    return await step.prompt(CONFIRM_PROMPT2, "Bis bald!");
                 });
             } else {
                 return await step.prompt(CONFIRM_PROMPT2, "Der Beratungsprozess ist nun abgeschlossen.");
