@@ -266,8 +266,6 @@ class MyBot {
         // User Data Property for UserState
         this.userDataAccessor = this.userState.createProperty(USER_DATA_PROPERTY);
 
-        
-
         // Add prompts that will be used in dialogs
         this.dialogSet
             .add(new TextPrompt(NAME_PROMPT))
@@ -279,8 +277,6 @@ class MyBot {
             .add(new ChoicePrompt(INDUSTRY_PROMPT))
             .add(new ChoicePrompt(FINISH_PROMPT))
             .add(new ChoicePrompt(MAINMENU_PROMPT));
-
-
 
         // Welcome dialog
         this.dialogSet.add(new WaterfallDialog('welcome', [
@@ -316,7 +312,6 @@ class MyBot {
                 return await step.replaceDialog('mainMenu', userID);
             }
         ]));
-
 
         // Create dialog for prompting user for profile data
         this.dialogSet.add(new WaterfallDialog('createProfile', [
@@ -367,7 +362,7 @@ class MyBot {
         // Enddialog
         this.dialogSet.add(new WaterfallDialog('endDialog', [
             this.end.bind(this),
-            this.loopEnd.bind(this),
+            this.loopEnd.bind(this)
         ]));
 
         // Create dialog for displaying payout to the user
@@ -395,7 +390,6 @@ class MyBot {
         // Get conversation- and userData from bot state
         const conversationData = await this.conversationDataAccessor.get(step.context, {});
         const user = await this.userDataAccessor.get(step.context, {});
-
         
         console.log("User in welcome dialog");
         console.log(util.inspect(user, false, null, false ));
@@ -403,12 +397,10 @@ class MyBot {
         console.log("conversationData from Middleware");
         console.log(util.inspect(conversationData, false, null, false ));
         
-
         // Write user and conversationdata to state
         await this.userDataAccessor.set(step.context, user);
         await this.conversationDataAccessor.set(step.context, conversationData);
-                    
-                  
+                           
         // Welcome the user
         if (treatment.introduction == true && treatment.rememberName == true && treatment.gender == true) {
             await sendWithDelay("Hallo und herzlich willkommen, ich bin **Charles**, dein persönlicher **Investmentberater**. Ich begleite dich durch den Beratungsprozess.", step);
@@ -486,17 +478,14 @@ class MyBot {
             
             console.log("User in age dialog");
             console.log(util.inspect(user, false, null, false ));
-            
-            
-            
+                        
             // Before saving entry, check if it already exists
             if(!user.name) {
 
                 user.name = step.result;
                                 
                 // Write userData to State
-                await this.userDataAccessor.set(step.context, user);
-                
+                await this.userDataAccessor.set(step.context, user);             
 
                 // Notify user about his name being remembered
                 if (treatment.rememberName == true) {
@@ -1267,7 +1256,7 @@ class MyBot {
                 CardFactory.adaptiveCard(factSheet[user.order[0]]),
                 CardFactory.adaptiveCard(factSheet[user.order[1]]),
                 CardFactory.adaptiveCard(factSheet[user.order[2]]),
-            ],"Hier die Unternehmensdaten. Nimm dir ausreichend Zeit, diese zu lesen.");
+            ],"Hier die Unternehmensdaten. Nimm dir ausreichend Zeit, diese zu lesen. T GE steht für tausend Geldeinheiten.");
             await step.context.sendActivity(messageWithCarouselOfCards);
 
             // Write userData to DB
@@ -1731,7 +1720,6 @@ class MyBot {
 
             // Write userData to State
             await this.userDataAccessor.set(step.context, user);
-            await this.userState.saveChanges(step.context);
 
             
             // Farewell and pause dialog
@@ -1751,8 +1739,9 @@ class MyBot {
             // Get userID from prior step and clear changes
             //const userID = step.options;
 
-            // Read UserData from DB
-            const user = await this.userDataAccessor.get(step.context, {});
+            // Read UserData from DB (im Result Bot wird hier neuer UserState Datensatz erzeugt und auf den alten kann nicht mehr zugegriffen werden (?))
+            const user = await this.userDataAccessor.get(step.context, {test: 'test'});
+            
 
             console.log("UserData in LoopEnd Dialog");
             console.log(user);
@@ -1760,10 +1749,10 @@ class MyBot {
           
             if (treatment.rememberName == true) {
                 await delay(`Name, der Beratungsprozess ist nun wirklich abgeschlossen!`, step).then(async function() { 
-                    return await step.prompt(CONFIRM_PROMPT2, `${user.name}, der Beratungsprozess ist nun wirklich abgeschlossen! Ich muss los und den Markt analysieren.`);
+                    return await step.prompt(CONFIRM_PROMPT2, `Der Beratungsprozess ist nun wirklich abgeschlossen! Ich muss jetzt weiter und den Markt analysieren.`);
                 });
             } else {
-                return await step.prompt(CONFIRM_PROMPT2, `Der Beratungsprozess ist nun wirklich abgeschlossen! Beratungssystem wird pausiert.`);
+                return await step.prompt(CONFIRM_PROMPT2, `Der Beratungsprozess ist nun wirklich abgeschlossen! Robo-Advisory System wird pausiert.`);
             }
         }
 
@@ -1869,7 +1858,7 @@ class MyBot {
                         conversationData.URLparam = turnContext.activity.membersAdded[idx].id;
 
                         // Manually set userId for Emulator use
-                        conversationData.URLparam = "1234A";
+                        conversationData.URLparam = "1234R";
                         
 
                         // Set userID
