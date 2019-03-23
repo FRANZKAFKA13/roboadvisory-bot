@@ -22,14 +22,21 @@ const syllable = require('syllable');
 
 
 // The accessor names for the conversation data and user profile state property accessors.
-const WELCOMED_USER = 'welcomedUserProperty';
 const CONVERSATION_DATA_PROPERTY = 'conversationData';
 const USER_DATA_PROPERTY = 'userData';
-const RISK_DATA_PROPERTY = 'userRiskData';
-const INVESTMENT_DATA_PROPERTY = 'userInvestmentData';
 
-// Accessor for the workaround
-const WORK_AROUND = 'workAroundProperty';
+// Prompts
+const NAME_PROMPT = "name_prompt";
+const AGE_PROMPT = "age_prompt";
+const GENDER_PROMPT = 'major_prompt';
+const EDUCATION_PROMPT = 'education_prompt';
+const CONFIRM_PROMPT = 'confirm_prompt';
+const CONFIRM_PROMPT2 = 'confirm_prompt2';
+const INDUSTRY_PROMPT = 'industry_prompt';
+const FINISH_PROMPT = 'finish_prompt';
+const MAINMENU_PROMPT = 'mainmenu_prompt';
+
+
 
 
 // Import AdaptiveCard content
@@ -62,8 +69,8 @@ const userData = {
         tag: "Alter",
         prompt: "Wie alt bist du? **(Bitte Alter als Zahl eingeben)**",
         recognize: (step) => {
-            var input = step.result.toString();
-            var result = Recognizers.recognizeNumber(input, Recognizers.Culture.German);
+            let input = step.result.toString();
+            let result = Recognizers.recognizeNumber(input, Recognizers.Culture.German);
             result = parseInt(result[0].resolution.value);
             return result;
         },
@@ -71,9 +78,9 @@ const userData = {
             try {
                 // Recognize the input as a number. This works for responses such as
                 // "twelve" as well as "12".
-                var input = step.result.toString();
-                var result = Recognizers.recognizeNumber(input, Recognizers.Culture.German);
-                var age = parseInt(result[0].resolution.value);
+                let input = step.result.toString();
+                let result = Recognizers.recognizeNumber(input, Recognizers.Culture.German);
+                let age = parseInt(result[0].resolution.value);
                 if (age < 16) {
                     await step.context.sendActivity("Für die Teilnahme am Experiment musst du **16 Jahre oder älter** sein.");
                     return false;
@@ -103,11 +110,6 @@ const userData = {
         tag: "Höchster Bildungsabschluss",
         prompt: "Was ist dein höchster Bildungsabschluss?",
     },
-/*     major: {
-        tag: "Studiengang",
-        prompt: "Was studierst du?",
-        prompt_other: "Dein Studiengang war wohl **nicht in der Liste**. Wie heißt dein Studiengang?",
-    }, */
 }
 
 
@@ -199,7 +201,7 @@ const genders = {
 const yesno = {
     yes: { 
         solution: "Ja",
-        possibilities: ['jip', 'jib', 'jap', 'yep', 'ja', 'yes', 'jop', 'jupp', 'jup', 'klar', 'si', 'oui', 'klaro', 'jaha', 'jaa', 'ya', 'yup', 'yas'],
+        possibilities: ['jip', 'ok', 'okay', 'oki', 'oke', 'jib', 'jap', 'yep', 'ja', 'yes', 'jop', 'jupp', 'jup', 'klar', 'si', 'oui', 'klaro', 'jaha', 'jaa', 'ya', 'yup', 'yas'],
     },
     no: {
         solution: "Nein",
@@ -255,22 +257,29 @@ class MyBot {
         // Memory storage
         this.memoryStorage = memoryStorage;
 
+        // Assign dialogSet
+        this.dialogSet = dialogSet;
+
         // Conversation Data Property for ConversationState
         this.conversationDataAccessor = conversationState.createProperty(CONVERSATION_DATA_PROPERTY);
 
-
-        // Properties for UserState   
-        //this.welcomedUserProperty = userState.createProperty(WELCOMED_USER);  
+        // User Data Property for UserState
         this.userDataAccessor = this.userState.createProperty(USER_DATA_PROPERTY);
-        this.riskDataAccessor = this.userState.createProperty(RISK_DATA_PROPERTY);
-        this.investmentDataAccessor = this.userState.createProperty(INVESTMENT_DATA_PROPERTY);
 
+        
 
         // Add prompts that will be used in dialogs
-        this.dialogSet = dialogSet;
-        this.dialogSet.add(new TextPrompt('textPrompt'));
-        this.dialogSet.add(new ChoicePrompt('choicePrompt'));
-        this.dialogSet.add(new NumberPrompt('numberPrompt'));
+        this.dialogSet
+            .add(new TextPrompt(NAME_PROMPT))
+            .add(new TextPrompt(AGE_PROMPT))
+            .add(new TextPrompt(GENDER_PROMPT))
+            .add(new TextPrompt(EDUCATION_PROMPT))
+            .add(new TextPrompt(CONFIRM_PROMPT))
+            .add(new TextPrompt(CONFIRM_PROMPT2))
+            .add(new ChoicePrompt(INDUSTRY_PROMPT))
+            .add(new ChoicePrompt(FINISH_PROMPT))
+            .add(new ChoicePrompt(MAINMENU_PROMPT));
+
 
 
         // Welcome dialog
@@ -281,10 +290,8 @@ class MyBot {
         // Main Menu Dialog
         this.dialogSet.add(new WaterfallDialog('mainMenu', [
             async function (step) {
-                // Get userID from prior step
-                var userID = step.options;
                // Return await step.prompt('choicePrompt', "Wähle eine der folgenden Optionen aus", ['Order Dinner', 'Reserve a table', 'Profil erstellen']);
-               return await step.prompt('choicePrompt', "**Bitte wähle** eine der folgenden Optionen aus", ['Profil erstellen', 'Profil anzeigen', 'Profil löschen', 'Risikoverhalten', 'Investment']);
+               return await step.prompt(MAINMENU_PROMPT, "**Bitte wähle** eine der folgenden Optionen aus", ['Profil erstellen', 'Profil anzeigen', 'Profil löschen', 'Risikoverhalten', 'Investment']);
             },
             async function (step) {
                 // Handle the user's response to the previous prompt and branch the dialog.
@@ -383,15 +390,13 @@ class MyBot {
         console.log("Welcome User Dialog");
 
         // Get userId from onTurn()
-        var userID = step.options[0];
-        var mode = step.options[1];
-
-        console.log(userID);
-        console.log(mode);
+        const userID = step.options;
         
+        // Get conversation- and userData from bot state
         const conversationData = await this.conversationDataAccessor.get(step.context, {});
         const user = await this.userDataAccessor.get(step.context, {});
 
+        
         console.log("User in welcome dialog");
         console.log(util.inspect(user, false, null, false ));
 
@@ -399,30 +404,28 @@ class MyBot {
         console.log(util.inspect(conversationData, false, null, false ));
         
 
-
+        // Write user and conversationdata to state
         await this.userDataAccessor.set(step.context, user);
         await this.conversationDataAccessor.set(step.context, conversationData);
-        
-
-
-              
-            
+                    
                   
         // Welcome the user
         if (treatment.introduction == true && treatment.rememberName == true && treatment.gender == true) {
             await sendWithDelay("Hallo und herzlich willkommen, ich bin **Charles**, dein persönlicher **Investmentberater**. Ich begleite dich durch den Beratungsprozess.", step);
         } else if (treatment.introduction == true && treatment.gender == false) {
-            var msg = "Hallo und herzlich willkommen, ich bin ein **Robo-Advisor**. Ich begleite dich durch den Beratungsprozess.";
+            let msg = "Hallo und herzlich willkommen, ich bin ein **Robo-Advisor**. Ich begleite dich durch den Beratungsprozess.";
             await sendWithDelay(msg, step);
         } else if (treatment.introduction == false && treatment.selfReference == false && treatment.rememberName == false) {
-            var msg = "Du wirst nun durch den Beratungsprozess begleitet.";
+            let msg = "Du wirst nun durch den Beratungsprozess begleitet.";
             await sendWithDelay(msg, step);
         }
-            
+
+        // Check if bot in testmode and route to dialogs
         if (testing == true) {
-            // Start main dialog                
+            // Start main dialog
             return await step.beginDialog('mainMenu', userID);
         } else {
+            // Start Profilecreation
             return await step.beginDialog('createProfile', userID);
         }
     }
@@ -432,40 +435,40 @@ class MyBot {
             console.log("Name Prompt");
 
             // Get userID from prior step and clear changes
-            var userID = step.options;
-            var changes = {};
+            const userID = step.options;
             
-            // Read UserData from DB
+            // Read UserData from State
             const user = await this.userDataAccessor.get(step.context, {});
-            console.log("User in name dialog");
-            console.log(util.inspect(user, false, null, false ));
+            const conversationData = await this.conversationDataAccessor.get(step.context, {});
             
+            // Save User- and Conversationdata to State
             await this.userDataAccessor.set(step.context, user);
+            await this.conversationDataAccessor.set(step.context, conversationData);
 
             // Before prompting, check if value already exists
             if(!user.name){
                 if (user.deleted == true) {
                         
                         if (treatment.selfReference == true) {
-                            var msg = "Ich stelle dir nun die gleichen Fragen erneut.";
+                            let msg = "Ich stelle dir nun die gleichen Fragen erneut.";
                             await sendWithDelay(msg, step);
                         } else {
-                            var msg = "Im folgenden nochmal die gleichen Fragen.";
+                            let msg = "Im folgenden nochmal die gleichen Fragen.";
                             await sendWithDelay(msg, step);
                         }
                 } else {
                         if (treatment.selfReference == true) {
-                            var msg = "Ich stelle dir nun ein paar Fragen, um deine wichtigsten Daten zu erfassen.";
+                            let msg = "Ich stelle dir nun ein paar Fragen, um deine wichtigsten Daten zu erfassen.";
                             await sendWithDelay(msg, step);
                         } else {
-                            var msg = "Im folgenden ein paar Fragen, um deine wichtigsten Daten zu erfassen.";
+                            let msg = "Im folgenden ein paar Fragen, um deine wichtigsten Daten zu erfassen.";
                             await sendWithDelay(msg, step);
                         }
                         
                 }
                 // Username doesn't exist --> Prompt
                 await delay(userData.name.prompt, step).then(async function() { 
-                    return await step.prompt('textPrompt', userData.name.prompt);
+                    return await step.prompt(NAME_PROMPT, userData.name.prompt);
                 });
             } else {
                 return await step.next();
@@ -476,45 +479,47 @@ class MyBot {
             console.log("Age Prompt");
 
             // Get userID from prior step and clear changes
-            var userID = step.options;
-            var changes = {};
+            const userID = step.options;
 
-            // Read UserData from DB
+            // Get UserData from State
             const user = await this.userDataAccessor.get(step.context, {});
+            
             console.log("User in age dialog");
             console.log(util.inspect(user, false, null, false ));
             
             
+            
             // Before saving entry, check if it already exists
             if(!user.name) {
+
                 user.name = step.result;
-                
-                // Write userData to DB
+                                
+                // Write userData to State
                 await this.userDataAccessor.set(step.context, user);
                 
 
                 // Notify user about his name being remembered
                 if (treatment.rememberName == true) {
-                    var msg = `Hallo **${user.name}**! Danke, dass du mir deinen Namen verraten hast. Ich werde ihn mir ab jetzt merken.`;
+                    let msg = `Hallo **${user.name}**! Danke, dass du mir deinen Namen verraten hast. Ich werde ihn mir ab jetzt merken.`;
                     await sendWithDelay(msg, step);
                 }
             }
             // Before prompting, check if value already exists
             if(!user.age) {
                 await delay(userData.age.prompt, step).then(async function() { 
-                    return await step.prompt('textPrompt', userData.age.prompt);
+                    return await step.prompt(AGE_PROMPT, userData.age.prompt);
                 });
                 
             } else {
                 return await step.next();
             }
         }
+
         async promptForGender (step) {
             console.log("Gender Prompt");
 
             // Get userID from prior step and clear changes
-            var userID = step.options;
-            var changes = {};
+            const userID = step.options;
 
             // Read UserData from DB
             const user = await this.userDataAccessor.get(step.context, {});
@@ -540,7 +545,7 @@ class MyBot {
             if(!user.gender){
                 // Call Gender Prompt
                 await delay(userData.gender.prompt, step).then(async function() { 
-                    return await step.prompt('textPrompt', userData.gender.prompt);
+                    return await step.prompt(GENDER_PROMPT, userData.gender.prompt);
                 });
                 
             } else {
@@ -551,8 +556,7 @@ class MyBot {
             console.log("Education Prompt");
            
             // Get userID from prior step and clear changes
-            var userID = step.options;
-            var changes = {};
+            const userID = step.options;
 
 
             // Read UserData from DB
@@ -581,24 +585,20 @@ class MyBot {
 
                 // Prompt for highest education with list of education options
                 await delay(userData.education.prompt, step).then(async function() { 
-                    return await step.prompt('textPrompt', userData.education.prompt);
+                    return await step.prompt(EDUCATION_PROMPT, userData.education.prompt);
                 });
             } else {
                 return await step.next();
             }
         }
-        async promptForMajor (step) {
+       /*  async promptForMajor (step) {
             console.log("Major Prompt");
 
             // Get userID from prior step and clear changes
-            var userID = step.options;
-            var changes = {};
+            const userID = step.options;
 
             // Read UserData from DB
             const user = await this.userDataAccessor.get(step.context, {});
-
-            console.log("Gender sollte jetzt hier stehen");
-            console.log(user.gender);
 
             // Before saving entry, check if it already exists
             if(!user.education){
@@ -624,17 +624,17 @@ class MyBot {
             } else {
                 return await step.next();
             }
-        }
+        } */
         
         async completeProfile (step) {
             console.log("Complete");
             
             // Get userID from prior step and clear changes
-            var userID = step.options;
-            var changes = {};
+            const userID = step.options;
 
             // Read UserData from DB
             const user = await this.userDataAccessor.get(step.context, {});
+            
 
             // Before saving entry, check if it already exists
             if(!user.education){
@@ -657,15 +657,18 @@ class MyBot {
 
             
             if (!user.complete){
-                console.log('test1');
                 // Read UserData from DB
                 const user = await this.userDataAccessor.get(step.context, {});
                 // Set user to complete
                 user.complete = true;
 
                 // Save conversation ID
-                user.conversationIds = {};
-                user.conversationIds.advisoryConversationId = step.context.activity.conversation.id;
+                user.advisoryConversationId = step.context.activity.conversation.id;
+
+                // Save userID to User
+                user.userID = userID;
+
+                
 
                 // Write userData to DB
                 await this.userDataAccessor.set(step.context, user);
@@ -677,14 +680,13 @@ class MyBot {
                 }
                 await sendWithDelay(msg, step);
             } else {
-                var msg = `**${user.name}**, du hast dein Profil bereits ausgefüllt.`;
+                let msg = `**${user.name}**, du hast dein Profil bereits ausgefüllt.`;
                 await sendWithDelay(msg, step);
             }
             if (testing == true) {
                 // Return to main dialog                
                 return await step.beginDialog('mainMenu', userID);
             } else {
-                console.log('test4');
                 return await step.beginDialog('displayProfile', userID);
             }
         }
@@ -694,18 +696,19 @@ class MyBot {
             console.log("Display Profile");
             
             // Get userID from prior step and clear changes
-            var userID = step.options;
-            var changes = {};
+            const userID = step.options;
 
             // Read UserData from DB
             const user = await this.userDataAccessor.get(step.context, {});
+            
 
             // If Profile not completed, end dialog and return to main menu
             if (!user.complete){
-                var msg = "Dein Profil ist noch nicht vollständig.";
+                let msg = "Dein Profil ist noch nicht vollständig.";
                 await sendWithDelay(msg, step);
                 return await step.replaceDialog('createProfile', userID);
             }
+
             // Create array from individual user data
             var userArr = Object.values(user);
             console.log(userArr);
@@ -729,14 +732,13 @@ class MyBot {
 
             // Prompt user, if profile is correct
             await delay("Sind deine Daten korrekt?", step).then(async function() { 
-                return await step.prompt('textPrompt', "Sind deine Daten korrekt?");
+                return await step.prompt(CONFIRM_PROMPT, "Sind deine Daten korrekt?");
             });
         }
         async isProfileCorrect (step) {
 
             // Get userID from prior step and clear changes
-            var userID = step.options;
-            var changes = {};
+            const userID = step.options;
 
             // Read UserData from DB
             const user = await this.userDataAccessor.get(step.context, {});
@@ -759,7 +761,6 @@ class MyBot {
             try {
                 // If profile incorrect, delete profile and recreate
                 if (validation.localeCompare("Nein") == 0) {
-                    console.log(validation + "test");
                     // Delete Profile 
                     if (treatment.civility == true) {
                         var msg = "Bitte erstelle dein Profil erneut."
@@ -787,8 +788,7 @@ class MyBot {
             console.log("Delete Profile");
             
             // Get userID from prior step and clear changes
-            var userID = step.options;
-            var changes = {};
+            const userID = step.options;
 
             // Read UserData from DB
             const user = await this.userDataAccessor.get(step.context, {});
@@ -831,11 +831,11 @@ class MyBot {
         async presentRiskCards (step) {
 
             // Get userID from prior step and clear changes
-            var userID = step.options;
-            var changes = {};
+            const userID = step.options;
 
             // Read UserData from DB
             const user = await this.userDataAccessor.get(step.context, {});
+            console.log("User bei risk card presentation")
             console.log(util.inspect(user, false, null, false ));
             
 
@@ -923,8 +923,7 @@ class MyBot {
 
         async assessRisk (step) {
             // Get userID from prior step and clear changes
-            var userID = step.options;
-            var changes = {};
+            const userID = step.options;
 
             // Read UserData from DB
             const user = await this.userDataAccessor.get(step.context, {});
@@ -946,8 +945,8 @@ class MyBot {
 
             // Retrieve choice object from Adaptive JSON Card
             var choice = step.context.activity.value;
-            console.log("Hier sollte choice objekt kommen");
-            console.log(choice);
+            //console.log("Risk Choice Objekt");
+            //console.log(choice);
                         
             // Key extrahieren, Nummer abschneiden und in Zahl umwandeln (Welche Karte wurde benutzt?)
             var roundPlayed = Object.keys(choice)[0];
@@ -968,7 +967,7 @@ class MyBot {
                 roundPlayed = parseInt(roundPlayed.substr(6,roundPlayed.length));
             }
             
-            console.log("hello hier sollte round counter kommen:");
+            console.log("Round counter bei Risk");
             console.log(user.roundCounter);
 
             // Überprüfen, ob Nutzer eine bereits verwendete Karte benutzt
@@ -1021,9 +1020,6 @@ class MyBot {
                 
             }
 
-            console.log(user.roundCounter);
-
-            console.log(choice);
             // If user didn't make choice, reprompt
             if (choice.localeCompare("Bitte wählen") == 0) {
                 if (treatment.civility == true) {
@@ -1127,8 +1123,7 @@ class MyBot {
         // Functions for Investment Game
         async promptForIndustry (step) {
             // Get userID from prior step and clear changes
-            var userID = step.options;
-            var changes = {};
+            const userID = step.options;
 
             // Read UserData from DB
             const user = await this.userDataAccessor.get(step.context, {});
@@ -1150,14 +1145,13 @@ class MyBot {
 
             }
             await delay("In welcher Branche möchtest du dein Investment tätigen?", step).then(async function() { 
-                return await step.prompt('choicePrompt', "In welcher Branche möchtest du dein Investment tätigen?", ['Automobilindustrie', 'Halbleiterindustrie', 'Gesundheitsbranche', 'Andere Branche']); 
+                return await step.prompt(INDUSTRY_PROMPT, "In welcher Branche möchtest du dein Investment tätigen?", ['Automobilindustrie', 'Halbleiterindustrie', 'Gesundheitsbranche', 'Andere Branche']); 
             });
             
         }
         async sendInstructions (step) {
             // Get userID from prior step and clear changes
-            var userID = step.options;
-            var changes = {};
+            const userID = step.options;
 
             // Read UserData from DB
             const user = await this.userDataAccessor.get(step.context, {});
@@ -1204,14 +1198,13 @@ class MyBot {
             await sendWithDelay(msg, step);
 
             await delay("Hast du alles verstanden?", step).then(async function() { 
-                return await step.prompt('textPrompt', "Hast du alles verstanden?");
+                return await step.prompt(CONFIRM_PROMPT, "Hast du alles verstanden?");
             });
 
         }
         async furtherInformation (step) {
             // Get userID from prior step and clear changes
-            var userID = step.options;
-            var changes = {};
+            const userID = step.options;
 
             // Read UserData from DB
             const user = await this.userDataAccessor.get(step.context, {});
@@ -1233,7 +1226,7 @@ class MyBot {
                     var msg = "Anschließend gebe ich dir eine Empfehlung, in welches Unternehmen ich an deiner Stelle investieren würde. Ob du dieser Entscheidung folgst, bleibt dir überlassen.";
                     await sendWithDelay(msg, step);
                     await delay("Bereit für die Unternehmensdaten?", step).then(async function() { 
-                        return await step.prompt('textPrompt', "Bereit für die Unternehmensdaten?");
+                        return await step.prompt(CONFIRM_PROMPT, "Bereit für die Unternehmensdaten?");
                     });
                 } else {
                     var msg = "Hier erneut ein paar Informationen zu deinem besseren Verständnis.";
@@ -1243,7 +1236,7 @@ class MyBot {
                     var msg = "Anschließend bekommst du eine Empfehlung, in welches Unternehmen du laut dem Robo-Advisory System investieren solltest. Ob du dieser Entscheidung folgst, bleibt dir überlassen.";
                     await sendWithDelay(msg, step);
                     await delay("Bereit für die Unternehmensdaten?", step).then(async function() { 
-                        return await step.prompt('textPrompt', "Bereit für die Unternehmensdaten?");
+                        return await step.prompt(CONFIRM_PROMPT, "Bereit für die Unternehmensdaten?");
                     });
                 }               
             } else {
@@ -1253,8 +1246,7 @@ class MyBot {
         }
         async presentCompanyInfo (step) {
             /// Get userID from prior step and clear changes
-            var userID = step.options;
-            var changes = {};
+            const userID = step.options;
 
             // Read UserData from DB
             const user = await this.userDataAccessor.get(step.context, {});
@@ -1294,8 +1286,7 @@ class MyBot {
         }
         async recommendInvestment (step) {
             // Get userID from prior step and clear changes
-            var userID = step.options;
-            var changes = {};
+            const userID = step.options;
 
             // Read UserData from DB
             const user = await this.userDataAccessor.get(step.context, {});
@@ -1328,8 +1319,7 @@ class MyBot {
         }
         async captureInvestmentDecision (step) {
             // Get userID from prior step and clear changes
-            var userID = step.options;
-            var changes = {};
+            const userID = step.options;
 
             // Read UserData from DB
             const user = await this.userDataAccessor.get(step.context, {});
@@ -1354,8 +1344,7 @@ class MyBot {
         }
         async saveInvestmentDecision (step) {
             // Get userID from prior step and clear changes
-            var userID = step.options;
-            var changes = {};
+            const userID = step.options;
 
             // Read UserData from DB
             const user = await this.userDataAccessor.get(step.context, {});
@@ -1384,7 +1373,7 @@ class MyBot {
 
 
                 await delay(msg, step).then(async function() { 
-                    return await step.prompt('choicePrompt', msg , ['Beratung abschließen']);
+                    return await step.prompt(FINISH_PROMPT, msg , ['Beratung abschließen']);
                 });
                 
             } else {
@@ -1404,7 +1393,7 @@ class MyBot {
                 var msg = "Nun heißt es warten, bis die Aktienkurse sich verändern. Ob du Gewinn oder Verlust gemacht hast, wirst du später erfahren."
 
                 await delay(msg, step).then(async function() { 
-                    return await step.prompt('choicePrompt', msg , ['Beratung abschließen']);
+                    return await step.prompt(FINISH_PROMPT, msg , ['Beratung abschließen']);
                 });
                
             }
@@ -1412,8 +1401,7 @@ class MyBot {
 
         async finishAdvisory (step) {
             // Get userID from prior step and clear changes
-            var userID = step.options;
-            var changes = {};
+            const userID = step.options;
 
             // Read UserData from DB
             const user = await this.userDataAccessor.get(step.context, {});
@@ -1425,36 +1413,77 @@ class MyBot {
 
         async prepareStockPrep (step) {
             // Get userID from prior step and clear changes
-            var userID = step.options;
-            var changes = {};
+            //const userID = step.options;
+
+            // Read UserData from DB
+            const user = await this.userDataAccessor.get(step.context, {});
+            user.userID = step.options;
+
+            // Get conversationData Object
+            const conversationData = await this.conversationDataAccessor.get(step.context, {});
+
 
             // Read saved user from Database
-            var userImport;
             try {
-                userImport = await this.memoryStorage.read([userID]);
+                //const userImport = await this.memoryStorage.read([user.userID]);
+                conversationData.userImport = await this.memoryStorage.read([user.userID]);
+                //console.log("Importierter User in Result Dialog");
+                //console.log(util.inspect(userImport, false, null, false ));
                 //throw "Fehler";
             }
             catch(e) {
+                console.log("Fehler beim Lesen des Datensatzes im Result Bot.")
                 console.error(e);
                 await console.log(Date(Date.now()));
                 // retry after 3 seconds
                 await timeout(3000);
-                userImport = await this.memoryStorage.read([userID]);
+                userImport = await this.memoryStorage.read([user.userID]);
                 await console.log(Date(Date.now()));
             }
 
-            userImport = userImport[userID];
-            console.log("imported savedUser");
-            console.log(util.inspect(userImport, false, null, false ));
+            console.log("Hier sollte userImport kommen");
+            console.log(conversationData.userImport);
 
-            // Copy relevant data from DB to current user object
-            const user = userImport;
-           
+            try {
+                var importSuccessful = conversationData.userImport[user.userID].name;
+            }
+            catch(e) {
+                console.log(e);
+                await step.context.sendActivity("Leider sind keine Nutzerdaten bekannt.");
+                return await step.endDialog();
+            }
+ 
+            // Copy data from imported Dataset to user state variable
+            user.name = conversationData.userImport[user.userID].name;
+            user.age = conversationData.userImport[user.userID].age;
+            user.gender = conversationData.userImport[user.userID].gender;
+            user.education = conversationData.userImport[user.userID].education;
+            user.complete = conversationData.userImport[user.userID].complete;
+            user.advisoryConversationId = conversationData.userImport[user.userID].advisoryConversationId;
+            user.userID = conversationData.userImport[user.userID].userID;
+            user.roundCounter = conversationData.userImport[user.userID].roundCounter;
+            user.riskchoices = conversationData.userImport[user.userID].riskchoices;
+            user.riskAssessmentComplete = conversationData.userImport[user.userID].riskAssessmentComplete;
+            user.riskDescription = conversationData.userImport[user.userID].riskDescription;
+            user.order = conversationData.userImport[user.userID].order;
+            user.botRecommendation = conversationData.userImport[user.userID].botRecommendation;
+            user.choice = conversationData.userImport[user.userID].choice;
+            user.follow = conversationData.userImport[user.userID].follow;
+            user.eTag = "*";
+
+
+            
+            console.log("User from UserState with Data from ImportedUser:");
+            console.log(util.inspect(user, false, null, false ));
+
             // Save ConversationID
             try {
-                user.conversationIds.resultConversationId = step.context.activity.conversation.id;
+                user.resultConversationId = step.context.activity.conversation.id;
             }
-            catch(e) {}
+            catch(e) { 
+                console.log("Saving ConversationID failed");
+                console.log(e);
+            }
 
             try {
                 if(user.name) {
@@ -1462,7 +1491,7 @@ class MyBot {
                 }
             }
             catch (e) {
-                await await step.context.sendActivity("Leider sind keine Nutzerdaten bekannt.");
+                await step.context.sendActivity("Leider sind keine Nutzerdaten bekannt.");
             }
 
             // Welcome user again
@@ -1482,16 +1511,10 @@ class MyBot {
             }
             await sendWithDelay(msg, step);
 
-            console.log("savedUser2");
-            console.log(util.inspect(user, false, null, false ));
 
-            // Write userData to DB
+            // Write userData to Cache
             await this.userDataAccessor.set(step.context, user);
 
-            // Read UserData from DB
-            const user2 = await this.userDataAccessor.get(step.context, {});
-            console.log("savedUser3");
-            console.log(util.inspect(user2, false, null, false ));
 
             return await step.next();
 
@@ -1504,25 +1527,12 @@ class MyBot {
             
         async presentStock (step) {
             // Get userID from prior step and clear changes
-            var userID = step.options;
-            var changes = {};
-
-            // Read saved user from Database
-            /* var userImport = await this.memoryStorage.read([userID]);
-            userImport = userImport[userID];
-            console.log("savedUser");
-            console.log(util.inspect(userImport, false, null, false )); */
+            //const userID = step.options;
 
             // Read UserData from DB
             const user = await this.userDataAccessor.get(step.context, {});
-
-            // Copy relevant data
-            /* user.name = userImport.name;
-            user.order = userImport.order;
-            user.win1 = userImport.win1;
-            user.win2 = userImport.win2;
-            user.loss1 = userImport.loss1;
-            user.loss2 =  userImport.loss2; */
+            console.log("User in zweitem Teil von Result Dialog");
+            console.log(user);
 
 
             // Randomly assign stock price charts to companies
@@ -1597,29 +1607,13 @@ class MyBot {
 
         async presentPayout (step) {
             // Get userID from prior step and clear changes
-            var userID = step.options;
-            var changes = {};
-
-           /*  // Read saved user from Database
-            var userImport = await this.memoryStorage.read([userID]);
-            userImport = userImport[userID];
-            console.log("savedUser");
-            console.log(util.inspect(userImport, false, null, false )); */
+            //const userID = step.options;
 
             // Read UserData from DB
             const user = await this.userDataAccessor.get(step.context, {});
-
-            // Copy relevant data
-            /* user.name = userImport.name;
-            user.gender = userImport.gender;
-            user.order = userImport.order;
-            user.win1 = userImport.win1;
-            user.win2 = userImport.win2;
-            user.loss1 = userImport.loss1;
-            user.loss2 =  userImport.loss2;
-            user.choice = userImport.choice; */
-
-            
+            console.log("User in drittem Teil von Result Dialog");
+            console.log(user);
+                       
             
             // Determine user's payout, send information to user and save in investmentData
             if (user.choice.localeCompare(user.win1) == 0) {
@@ -1665,9 +1659,9 @@ class MyBot {
             // Loop main menu or go to next dialog (depending on test mode)
             if (testing == true) {
                 // Return to main dialog                
-                return await step.beginDialog('mainMenu', userID);
+                return await step.beginDialog('mainMenu', user.userID);
             } else {
-                return await step.replaceDialog('endDialog', userID);
+                return await step.replaceDialog('endDialog', user.userID);
             }
         }
 
@@ -1686,82 +1680,91 @@ class MyBot {
         }
 
         async end (step) {
-            // Get userID from prior step and clear changes
-            var userID = step.options;
-            var changes = {};
+            console.log("End Dialog");
+
+            // Read ConversationData from DB
+            const conversationData = await this.conversationDataAccessor.get(step.context, {});
 
             // Read UserData from DB
             const user = await this.userDataAccessor.get(step.context, {});
 
-            try {
-                var endRepeatTemp = user.endRepeat;
-            }
-            catch (e) { 
-                await step.context.sendActivity(e); 
-                endRepeatTemp = "";
-            }
+            // Save data to DB, inform user and set repeat flag
+            if (!conversationData.endRepeat) {                       
+                // Write userData to DB 
+                await this.userDataAccessor.set(step.context, user);
 
-            if (!endRepeatTemp) {
-                user.endRepeat = true;
+                console.log("User im Enddialog vor speichern in DB");
+                console.log(user);
+
+                conversationData.changes = {};
+                conversationData.changes[user.userID] = user;
+
+                try {
+                    
+                    await this.memoryStorage.write(conversationData.changes);
+                    //throw "Fehler";
+                }
+                catch(e) {
+                    console.error(e);
+                    await console.log(Date(Date.now()));
+                    // retry after 2 seconds
+                    await timeout(3000);
+                    await this.memoryStorage.write(conversationData.changes);
+                    await console.log(Date(Date.now()));
+                }       
+
+                console.log("User nach speichern in DB");
+                console.log(user);
+
+                // Set repeat flag for enddialog
+                conversationData.endRepeat = true;
+                console.log(`${user.name} im Enddialog angekommen. EndRepeatflag: ${conversationData.endRepeat}.`)
+
+                // Inform user
                 if (treatment.rememberName == true) {
                     var msg = `Danke, ${user.name}, für deine Zeit. Der Beratungsprozess ist nun abgeschlossen.`;
-                } else {
-                    var msg = `Der Beratungsprozess ist nun abgeschlossen.`;
-                }
-                await sendWithDelay(msg, step);
-                
-            }
-                        
-            // Write userData to DB
-            await this.userDataAccessor.set(step.context, user);
+                } 
 
+                await sendWithDelay(msg, step);   
+            }
+
+
+            // Write userData to State
+            await this.userDataAccessor.set(step.context, user);
+            await this.userState.saveChanges(step.context);
+
+            
             // Farewell and pause dialog
             if (treatment.introduction == true) {
                 await delay("Bis bald!", step).then(async function() { 
-                    return await step.prompt('textPrompt', "Bis bald!");
+                    return await step.prompt(CONFIRM_PROMPT2, "Bis bald! Wir schreiben wieder, wenn die Aktienkurse sich verändert haben.");
                 });
+            } else {
+                return await step.prompt(CONFIRM_PROMPT2, "Der Beratungsprozess ist nun abgeschlossen.");
             }
-            
 
-            console.log("User vor speichern in DB");
-            console.log(user);
 
-            // Write User Object to DB
-            changes[userID] = user;
-            try {
-                await this.memoryStorage.write(changes);
-                //throw "Fehler";
-            }
-            catch(e) {
-                console.error(e);
-                await console.log(Date(Date.now()));
-                // retry after 2 seconds
-                await timeout(3000);
-                await this.memoryStorage.write(changes);
-                await console.log(Date(Date.now()));
-            }           
+
         }
 
         async loopEnd (step) {
             // Get userID from prior step and clear changes
-            var userID = step.options;
-            var changes = {};
+            //const userID = step.options;
 
             // Read UserData from DB
             const user = await this.userDataAccessor.get(step.context, {});
 
-            // Inform user
+            console.log("UserData in LoopEnd Dialog");
+            console.log(user);
+
+          
             if (treatment.rememberName == true) {
-                var msg = `${user.name}, der Beratungsprozess ist nun wirklich abgeschlossen!`;
+                await delay(`Name, der Beratungsprozess ist nun wirklich abgeschlossen!`, step).then(async function() { 
+                    return await step.prompt(CONFIRM_PROMPT2, `${user.name}, der Beratungsprozess ist nun wirklich abgeschlossen! Ich muss los und den Markt analysieren.`);
+                });
             } else {
-                var msg = `Der Beratungsprozess ist nun wirklich abgeschlossen!`;
+                return await step.prompt(CONFIRM_PROMPT2, `Der Beratungsprozess ist nun wirklich abgeschlossen! Beratungssystem wird pausiert.`);
             }
-            
-            await sendWithDelay(msg, step);
-
-
-            // Loop dialog
-            return await step.replaceDialog('endDialog', userID);
         }
 
         // Dialogs for payout display
@@ -1769,26 +1772,24 @@ class MyBot {
         async displayPayout (step) {
             console.log("Display Payout");
             // Get userID from prior step and clear changes
-            var userID = step.options;
-            var changes = {};
+            const userID = step.options;
 
             // Read UserData from DB
             const user = await this.userDataAccessor.get(step.context, {});
 
 
-            var msg = `Hallo ${user.name}. Am Ausgang kannst du dir deine Bezahlung von ${user.payout} abholen.` ;
+            var msg = `Hallo ${user.name}. Am Ausgang kannst du dir deine Bezahlung von ${user.payout} abholen.`;
             await sendWithDelay(msg, step);
         }
 
         async startBot (step) {
             console.log("Bot waiting for user to start");    
-            return await step.prompt('textPrompt', "");
+            return await step.prompt(CONFIRM_PROMPT, "");
         }
 
         async startDialog (step) {
             // Get userID from prior step and clear changes
-            var userID = step.options;
-            var changes = {};
+            const userID = step.options;
 
             // Read UserData from DB
             const user = await this.userDataAccessor.get(step.context, {});
@@ -1831,8 +1832,8 @@ class MyBot {
      * @param {TurnContext} on turn context object.
      */
     async onTurn(turnContext) {
-        let dc = await this.dialogSet.createContext(turnContext);
         
+        const dc = await this.dialogSet.createContext(turnContext);
 
         //await logMessageText(this.memoryStorage, turnContext, this.userState);
 
@@ -1840,11 +1841,10 @@ class MyBot {
         if (turnContext.activity.type === ActivityTypes.value){
             console.log(turnContext.activity.type.value);
         }
-        if (turnContext.activity.type === ActivityTypes.Message) {
-            
+
+        if (turnContext.activity.type === ActivityTypes.Message) {          
             // Continue ongoing dialog
             await dc.continueDialog();
-            
         } else if (turnContext.activity.type === ActivityTypes.ConversationUpdate) {
             // Do we have any new members added to the conversation?
             if (turnContext.activity.membersAdded.length !== 0) {
@@ -1860,43 +1860,42 @@ class MyBot {
                         // Funktionierender Code, wenn WebChat gefixt
                         console.log("User added");
                         
-                        // Read ConversationData from DB
+                        // Read ConversationData from State
                         const conversationData = await this.conversationDataAccessor.get(turnContext, {});
-
                         const user = await this.userDataAccessor.get(turnContext, {});
-                        console.log("Joined User:");
-                        console.log(util.inspect(user, false, null, false ));
 
-                        // Get userID which is either IDA or IDR for advisory or result
-                        var URLparam = turnContext.activity.membersAdded[idx].id;
-
-                        URLparam = "0000123R";
                         
-                        // Set userID
-                        if (!user.userID) {
-                            console.log("UserID wird eingetragen");
-                            user.userID = URLparam.substring(0, URLparam.length-1);
-                        }
+                        // Get userID which is either IDA for advisory or IDR for result
+                        conversationData.URLparam = turnContext.activity.membersAdded[idx].id;
 
-                        console.log("Joined User nach ID eintragung:");
-                        console.log(util.inspect(user, false, null, false ));
+                        // Manually set userId for Emulator use
+                        conversationData.URLparam = "1234A";
+                        
+
+                        // Set userID
+                        if (!conversationData.userID) {
+                            console.log("UserID wird eingetragen");
+                            conversationData.userID = conversationData.URLparam.substring(0, conversationData.URLparam.length-1);
+                            console.log("Eingetragene user ID:" + conversationData.userID);
+                        }
         
                         // Get last character which determines mode
-                        conversationData.mode = URLparam.substring(URLparam.length-1, URLparam.length);
+                        conversationData.mode = conversationData.URLparam.substring(conversationData.URLparam.length-1, conversationData.URLparam.length);
                         
-                        await this.userDataAccessor.set(turnContext, user);
+                        // Write user and conversationdata to State
                         await this.conversationDataAccessor.set(turnContext, conversationData);
+                        await this.userDataAccessor.set(turnContext, user);
                         
                         
                         // Route to correct dialog depending on treatment and bot type
                         if (treatment.initiation == true && conversationData.mode.localeCompare("A") == 0) {
                             console.log("Advisory Modus");
-                            await dc.beginDialog('welcome', [user.userID, conversationData.mode]);
+                            await dc.beginDialog('welcome', conversationData.userID);
                         } else if (treatment.initiation == false) {
-                            await dc.beginDialog('startBot', [user.userID, conversationData.mode]);
+                            await dc.beginDialog('startBot', conversationData.userID);
                         } else if (treatment.initiation == true && conversationData.mode.localeCompare("R") == 0) {
                             console.log("Result Modus");
-                            await dc.beginDialog('investmentResult', user.userID)
+                            await dc.beginDialog('investmentResult', conversationData.userID)
                         }
                     }
                     if (turnContext.activity.membersAdded[idx].id === turnContext.activity.recipient.id) {
@@ -1910,7 +1909,6 @@ class MyBot {
     
         // Save changes to the user state.
         await this.userState.saveChanges(turnContext);
-        console.log("Userstate Saved");
 
         // End this turn by saving changes to the conversation state.
         await this.conversationState.saveChanges(turnContext);
@@ -2013,7 +2011,7 @@ function calculateDelay(previousMessage, botResponse, mode) {
 
         // Sum up both times to calculate delay, subtract existing network delay
         responseTime = (readingTime + typingTime);
-        console.log("INFO: Delay calculated: %s, %s | %s, %s -> %s", previousMessageComplexity, readingTime, botResponseComplexity, typingTime, responseTime);
+        //console.log("INFO: Delay calculated: %s, %s | %s, %s -> %s", previousMessageComplexity, readingTime, botResponseComplexity, typingTime, responseTime);
 
         
 
@@ -2095,9 +2093,9 @@ function validateInput(input, obj) {
 
     // Check if there was a match 
     if (match[0]) {
-        console.log('A match with ' + match[1]*100 + '% accuracy was found: ' + match[0])
+        //console.log('A match with ' + match[1]*100 + '% accuracy was found: ' + match[0])
     } else {
-        console.log('The user input "' + input + '" could not be matched.')
+        //console.log('The user input "' + input + '" could not be matched.')
     }
     
     return match[0];

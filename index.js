@@ -61,8 +61,8 @@ let transcriptStore = new AzureBlobTranscriptStore({
 });
 
 // ConversationState and UserState
-const conversationState = new ConversationState(memoryStorageLocal);
-const userState = new UserState(memoryStorageLocal);
+const conversationState = new ConversationState(memoryStorage);
+const userState = new UserState(memoryStorage);
 
 
 
@@ -127,8 +127,8 @@ adapter.use(transcriptMiddleware);
 
 
 // Scheinbar nötig für CosmosDB wirft bei local speicher aber error
-adapter.use(new AutoSaveStateMiddleware(conversationState));
-adapter.use(new AutoSaveStateMiddleware(userState));
+//adapter.use(new AutoSaveStateMiddleware(conversationState));
+//adapter.use(new AutoSaveStateMiddleware(userState));
 
 // Typing middleware
 //adapter.use(new ShowTyping());
