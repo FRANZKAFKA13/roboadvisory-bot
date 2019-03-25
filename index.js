@@ -48,21 +48,31 @@ const memoryStorageLocal = new MemoryStorage();
 
 // Add Blobstorage
 const memoryStorage = new BlobStorage({
-    //containerName: 'roboadvisory-blob',
-    //storageAccountOrConnectionString: 'DefaultEndpointsProtocol=https;AccountName=roboadvisorytabledb;AccountKey=jwe+SHecBWzvrlTCVBYf9P20tpmzxK+12ISicOOnqSWQPiTh/bCpH5vU/vdS79A01+cZwRdReQRYsyluucBMbA==;EndpointSuffix=core.windows.net',
     containerName: process.env.CONTAINER_NAME, 
     storageAccountOrConnectionString: process.env.CONNECTION_STRING, 
 })
 
+// Storage for userState
+const userStateStorage = new BlobStorage({
+    containerName: process.env.CONTAINER_NAME_USERSTATE, 
+    storageAccountOrConnectionString: process.env.CONNECTION_STRING, 
+})
+
+// Storage for conversationState
+const conversationStateStorage = new BlobStorage({
+    containerName: process.env.CONTAINER_NAME_CONVERSATIONSTATE, 
+    storageAccountOrConnectionString: process.env.CONNECTION_STRING, 
+})
+
 // The transcript store has methods for saving and retrieving bot conversation transcripts.
-let transcriptStore = new AzureBlobTranscriptStore({
+const transcriptStore = new AzureBlobTranscriptStore({
     containerName: process.env.CONTAINER_NAME_TRANSCRIPT, 
     storageAccountOrConnectionString: process.env.CONNECTION_STRING,
 });
 
-// ConversationState and UserState
-const conversationState = new ConversationState(memoryStorage);
-const userState = new UserState(memoryStorage);
+// Create ConversationState and UserState and assign to blob containers
+const conversationState = new ConversationState(conversationStateStorage);
+const userState = new UserState(userStateStorage);
 
 
 

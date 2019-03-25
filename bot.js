@@ -1033,7 +1033,7 @@ class MyBot {
 
            
             // Repeat until all games are played or until B is played
-            if (user.roundCounter < 10 && !conversationData.choice.localeCompare("A")) {
+            if (user.roundCounter < 10 && !conversationData.choice.localeCompare("A")) { // risk assessment continues
                 user.roundCounter++;
 
                 // Write userData to DB
@@ -1041,7 +1041,7 @@ class MyBot {
 
                 // Start next round
                 return await step.replaceDialog('riskAssessment', userID);
-            } else {
+            } else { //risk assessment complete
                 // Tag risk assessment as complete
                 user.riskAssessmentComplete = true;
                 // Assess risk behavior based on Holt and Laury (2002)
@@ -1083,7 +1083,14 @@ class MyBot {
                         break; 
                 }
 
-                // Write userData to DB
+                // Fill choices array with "B" choices in order to make arrays equally long --> less data cleansing in Excel
+                for (var i = 0; i < 10; i++) {
+                    if (typeof user.riskchoices[i] === 'undefined') {
+                        user.riskchoices[i] = "B";
+                    }
+                }
+
+                // Write userData to state
                 await this.userDataAccessor.set(step.context, user);
 
                 // End dialog
@@ -1116,11 +1123,6 @@ class MyBot {
             // Get conversationData Object
             const conversationData = await this.conversationDataAccessor.get(step.context, {});
 
-            console.log("Conversationdata1");
-            console.log(util.inspect(conversationData, false, null, false ));
-
-            console.log("invalid choice: " + conversationData.invalidChoice);
-
             // Skip this step if user already made an invalid choice at the end of this dialog
             if (conversationData.invalidChoice == true) {
                 console.log("invalid choice entdeckt");
@@ -1133,7 +1135,7 @@ class MyBot {
                 return await step.replaceDialog('endDialog', userID);
             }
             
-            if (!user.repeat){
+            if (!conversationData.repeatInvestmentDialog){
                 if (treatment.selfReference == true){
                     var msg = "Da nun alle von dir relevanten Daten erfasst sind und dein Risikoprofil ermittelt ist, können wir uns zusammen um deine **Investitionsentscheidung** kümmern. Du hast ein Budget von **3000 Geldeinheiten** zur Verfügung.";
                 } else {
@@ -1172,10 +1174,11 @@ class MyBot {
                 }
                 await sendWithDelay(msg, step);
 
-                user.repeat = true;
+                conversationData.repeatInvestmentDialog = true;
 
-                // Write userData to DB
+                // Write to state
                 await this.userDataAccessor.set(step.context, user);
+                await this.conversationDataAccessor.set(step.context, conversationData);
 
                 // Loop dialog
                 return await step.replaceDialog('investmentDecision', userID);
@@ -1610,6 +1613,12 @@ class MyBot {
             for (var i = 0; i < 3; i++) {
                 conversationData.outcomes.push(conversationData.allOutcomes[conversationData.arrHelp[i]]);
             };
+
+            // Predefine user.win sets to make dataset equally long --> less data-cleansing in Excel
+            user.win1 = "none";
+            user.win2 = "none";
+            user.loss1 = "none";
+            user.loss2 = "none";
 
             // Transform outcomes to verbal statements and save result in investmentData
             conversationData.statements = [];
