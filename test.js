@@ -1,11 +1,4 @@
-var string1 = "39843A"
-var string2 = "39843R"
-
-var id1 = string1.substring(0, string1.length-1);
-var id2 = string2.substring(0, string2.length-1);
-
-var mode1 = string1.substring(string1.length-1, string1.length);
-var mode2 = string2.substring(string2.length-1, string2.length);
-
-console.log(id1);
-console.log(mode1);
+var my_string = "John Doe's iPhone6 3u 3 93 ";
+var spaceCount = (my_string.split(" ").length - 1);
+console.log(spaceCount)
+console.log(my_string.split(" "));

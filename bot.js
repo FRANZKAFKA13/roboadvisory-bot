@@ -67,7 +67,7 @@ const userData = {
     },
     age: {
         tag: "Alter",
-        prompt: "Wie alt bist du? **(Bitte Alter als Zahl eingeben)**",
+        prompt: "Wie alt bist du?",
         recognize: (step) => {
             let input = step.result.toString();
             let result = Recognizers.recognizeNumber(input, Recognizers.Culture.German);
@@ -133,11 +133,19 @@ const educations = {
     },
     bachelor: {
         solution: "Bachelor",
-        possibilities: ['bachelor', 'Bachelor', 'B.Sc.', 'B. Sc.', 'b sc', 'b.sc.', 'bsc', 'b.sc'],
+        possibilities: ['bachelor', 'Bachelor', 'bachelor of science', 'bachelor of arts', 'bachelor of engineering','B.Sc.', 'B. Sc.', 'b sc', 'b.sc.', 'bsc', 'b.sc'],
     },
     master: {
         solution: "Master",
-        possibilities: ['master', 'Master', 'M.Sc.', 'M. Sc.', 'm sc', 'm.sc.', 'msc', 'm.sc'],
+        possibilities: ['master', 'Master', 'master of science', 'master of arts', 'master of engineering', 'M.Sc.', 'M. Sc.', 'm sc', 'm.sc.', 'msc', 'm.sc'],
+    },
+    diplom: {
+        solution: "Diplom",
+        possibilities: ['diplom', 'dipl.', 'dipl', 'diplom-', 'diplomgrad'],
+    },
+    staatsexamen: {
+        solution: "Staatsexamen",
+        possibilities: ['stex', 'erstes staatsexamen', '1. staatsexamen', 'zweites staatsexamen', '2. staatsexamen', 'erstes stex', 'zweites stex', '1. stex', '2. stex'],
     },
     phd: {
         solution: "Ph.D.",
@@ -185,11 +193,11 @@ const majors = {
 const genders = {
     male: { 
         solution: "männlich",
-        possibilities: ['männlich', 'männl', 'mann', 'junge', 'm'],
+        possibilities: ['männlich', 'männl', 'mann', 'junge', 'm', 'männlihc', 'mannlich', 'mannlihc'],
     },
     female: {
         solution: "weiblich",
-        possibilities: ['weiblich', 'weibl', 'frau', 'mädchen', 'w'],
+        possibilities: ['weiblich', 'weibl', 'frau', 'mädchen', 'w', 'weiblihc'],
     },
     diverse: {
         solution: "divers",
@@ -445,15 +453,15 @@ class MyBot {
                             let msg = "Ich stelle dir nun die gleichen Fragen erneut.";
                             await sendWithDelay(msg, step);
                         } else {
-                            let msg = "Im folgenden nochmal die gleichen Fragen.";
+                            let msg = "Im Folgenden nochmal die gleichen Fragen.";
                             await sendWithDelay(msg, step);
                         }
-                } else {
+                } else if (!conversationData.wrongName) {
                         if (treatment.selfReference == true) {
                             let msg = "Ich stelle dir nun ein paar Fragen, um deine wichtigsten Daten zu erfassen.";
                             await sendWithDelay(msg, step);
                         } else {
-                            let msg = "Im folgenden ein paar Fragen, um deine wichtigsten Daten zu erfassen.";
+                            let msg = "Im Folgenden ein paar Fragen, um deine wichtigsten Daten zu erfassen.";
                             await sendWithDelay(msg, step);
                         }
                         
@@ -473,14 +481,31 @@ class MyBot {
             // Get userID from prior step and clear changes
             const userID = step.options;
 
-            // Get UserData from State
+            // Get UserData and conversationdata from State
             const user = await this.userDataAccessor.get(step.context, {});
+            const conversationData = await this.conversationDataAccessor.get(step.context, {});
             
             console.log("User in age dialog");
             console.log(util.inspect(user, false, null, false ));
                         
             // Before saving entry, check if it already exists
             if(!user.name) {
+
+                // Check if user entered whole sentence instead of name
+                var spaceCount = (step.result.split(" ").length - 1);
+
+                if (spaceCount > 1) {
+                    if (treatment.civility == true) {
+                        let msg = `Bitte gib nur deinen Namen ein.`;
+                        await sendWithDelay(msg, step);
+                    } else {
+                        let msg = `Gib nur deinen Namen ein.`;
+                        await sendWithDelay(msg, step);
+                    }
+                    conversationData.wrongName = true;
+                    await this.conversationDataAccessor.set(step.context, conversationData);
+                    return await step.replaceDialog('createProfile', userID);
+                }
 
                 user.name = step.result;
                                 
@@ -749,15 +774,7 @@ class MyBot {
             catch (e) {await step.context.sendActivity(e)}
             try {
                 // If profile incorrect, delete profile and recreate
-                if (validation.localeCompare("Nein") == 0) {
-                    // Delete Profile 
-                    if (treatment.civility == true) {
-                        var msg = "Bitte erstelle dein Profil erneut."
-                    } else {
-                        var msg = "Erstelle dein Profil erneut."
-                    }
-                    
-                    await sendWithDelay(msg, step);
+                if (validation.localeCompare("Nein") == 0) {                    
                     return await step.replaceDialog('deleteProfile', userID);
                 }
             }
@@ -874,7 +891,7 @@ class MyBot {
                 await sendWithDelay(msg, step);
   
                 var msg = "Jedes Spiel hat zwei mögliche Ausgänge, die jeweils eine festgelegte Wahrscheinlichkeit und \
-                eine festgelegte Auszahlung haben.";
+                eine festgelegte Auszahlung in Geldeinheiten (GE) haben.";
                 await sendWithDelay(msg, step);               
             }
             
@@ -916,6 +933,8 @@ class MyBot {
 
             // Read UserData from DB
             const user = await this.userDataAccessor.get(step.context, {});
+
+            
             
             // If user types in message, restart without iterating round counter
             if (step.result) {
@@ -1117,6 +1136,20 @@ class MyBot {
             // Read UserData from DB
             const user = await this.userDataAccessor.get(step.context, {});
 
+            // Get conversationData Object
+            const conversationData = await this.conversationDataAccessor.get(step.context, {});
+
+            console.log("Conversationdata1");
+            console.log(util.inspect(conversationData, false, null, false ));
+
+            console.log("invalid choice: " + conversationData.invalidChoice);
+
+            // Skip this step if user already made an invalid choice at the end of this dialog
+            if (conversationData.invalidChoice == true) {
+                console.log("invalid choice entdeckt");
+                return await step.next();
+            }
+
             if (user.choice) {
                 var msg = `Du hast dich bereits für das Unternehmen **${user.choice}** entschieden. `;
                 await sendWithDelay(msg, step);
@@ -1144,6 +1177,14 @@ class MyBot {
 
             // Read UserData from DB
             const user = await this.userDataAccessor.get(step.context, {});
+
+            // Get conversationData Object
+            const conversationData = await this.conversationDataAccessor.get(step.context, {});
+
+            // Skip this step if user already made an invalid choice at the end of this dialog
+            if (conversationData.invalidChoice == true) {
+                return await step.next();
+            }
 
             // Reprompt if user doesn't choose appropriate industry from experiment's scenario description
             if (step.result.value.localeCompare("Halbleiterindustrie") != 0) {
@@ -1198,6 +1239,14 @@ class MyBot {
             // Read UserData from DB
             const user = await this.userDataAccessor.get(step.context, {});
 
+            // Get conversationData Object
+            const conversationData = await this.conversationDataAccessor.get(step.context, {});
+
+            // Skip this step if user already made an invalid choice at the end of this dialog
+            if (conversationData.invalidChoice == true) {
+                return await step.next();
+            }
+
             var validation = await validateInput(step.result, yesno);
 
             // If user didn't say "Yes", count it as "No"
@@ -1240,6 +1289,14 @@ class MyBot {
             // Read UserData from DB
             const user = await this.userDataAccessor.get(step.context, {});
 
+            // Get conversationData Object
+            const conversationData = await this.conversationDataAccessor.get(step.context, {});
+
+            // Skip this step if user already made an invalid choice at the end of this dialog
+            if (conversationData.invalidChoice == true) {
+                return await step.next();
+            }
+
             // Create array if it doesn't exist yet
             if (!user.order) {
                 user.order = [];
@@ -1280,16 +1337,24 @@ class MyBot {
             // Read UserData from DB
             const user = await this.userDataAccessor.get(step.context, {});
 
+            // Get conversationData Object
+            const conversationData = await this.conversationDataAccessor.get(step.context, {});
+
+            // Skip this step if user already made an invalid choice at the end of this dialog
+            if (conversationData.invalidChoice == true) {
+                return await step.next();
+            }
+
             // Make randomized recommendation 
             if (treatment.selfReference == true) {
-                var msg = `Basierend auf meinen vergangenen Erfahrungen halte ich \
+                var msg = `Basierend auf meinen vergangenen Erfahrungen und aktuellen Marktanalysen halte ich \
                 sowohl die **${investmentData.companies[user.order[0]]}** als auch die **${investmentData.companies[user.order[2]]}** für **überbewertet**. \
                 Die **${investmentData.companies[user.order[1]]}** halte ich dagegen für **unterbewertet**. \
                 Das Ergebnis deiner **Risikoverhaltensanalyse** passt außerdem zum Unternehmensprofil der **${investmentData.companies[user.order[1]]}**. Aufgrund dessen \
                 empfehle ich dir, in die **${investmentData.companies[user.order[1]]}** zu investieren.`;
                 await sendWithDelay(msg, step);
             } else {
-                var msg = `Basierend auf vergangenen Erfahrungen wird \
+                var msg = `Basierend auf vergangenen Erfahrungen und aktuellen Marktanalysen wird \
                 sowohl die **${investmentData.companies[user.order[0]]}** als auch die **${investmentData.companies[user.order[2]]}** für **überbewertet** gehalten. \
                 Die **${investmentData.companies[user.order[1]]}** wird als **unterbewertet** eingestuft. \
                 Das Ergebnis deiner **Risikoverhaltensanalyse** passt außerdem zum Unternehmensprofil der **${investmentData.companies[user.order[1]]}**. Aufgrund dessen \
@@ -1313,23 +1378,35 @@ class MyBot {
             // Read UserData from DB
             const user = await this.userDataAccessor.get(step.context, {});
 
-            // Let user make decision with the help of a heroCard with buttons
-            const reply = { type: ActivityTypes.Message };
+            // Get conversationData Object
+            const conversationData = await this.conversationDataAccessor.get(step.context, {});
 
-            // Create dynamic buttons with the same order that was randomly generated before
-            const buttons = [
-                { type: ActionTypes.ImBack, title: investmentData.companies[user.order[0]], value: investmentData.companies[user.order[0]] },
-                { type: ActionTypes.ImBack, title: investmentData.companies[user.order[1]], value: investmentData.companies[user.order[1]] },
-                { type: ActionTypes.ImBack, title: investmentData.companies[user.order[2]], value: investmentData.companies[user.order[2]] }
-            ];
+            // Skip this step if user already made an invalid choice at the end of this dialog
+            if (conversationData.invalidChoice == true && treatment.civility == true) {
+                var msg = "Bitte wähle eines der drei Unternehmen.";
+                await sendWithDelay(msg, step);
+            } else if (conversationData.invalidChoice == true && treatment.civility == false) {
+                var msg = "Wähle eines der drei Unternehmen.";
+                await sendWithDelay(msg, step);
+            } else {
+                // Let user make decision with the help of a heroCard with buttons
+                const reply = { type: ActivityTypes.Message };
 
-            // Add buttons and text to hero card
-            const card = CardFactory.heroCard('', undefined, buttons, { text: '' });
-            var msg = "In **welches Unternehmen** möchtest du dein vorhandenes Investitionsbudget von **3000 Geldeinheiten** investieren? Du wirst in einem Jahr an dem **Gewinn** oder **Verlust** des Unternehmens beteiligt werden.";
-            await sendWithDelay(msg, step);
-            // Add card to reply and send
-            reply.attachments = [card];
-            await step.context.sendActivity(reply);
+                // Create dynamic buttons with the same order that was randomly generated before
+                const buttons = [
+                    { type: ActionTypes.ImBack, title: investmentData.companies[user.order[0]], value: investmentData.companies[user.order[0]] },
+                    { type: ActionTypes.ImBack, title: investmentData.companies[user.order[1]], value: investmentData.companies[user.order[1]] },
+                    { type: ActionTypes.ImBack, title: investmentData.companies[user.order[2]], value: investmentData.companies[user.order[2]] }
+                ];
+
+                // Add buttons and text to hero card
+                const card = CardFactory.heroCard('', undefined, buttons, { text: '' });
+                var msg = "In **welches Unternehmen** möchtest du dein vorhandenes Investitionsbudget von **3000 Geldeinheiten** investieren? Du wirst in einem Jahr an dem **Gewinn** oder **Verlust** des Unternehmens beteiligt werden.";
+                await sendWithDelay(msg, step);
+                // Add card to reply and send
+                reply.attachments = [card];
+                await step.context.sendActivity(reply);
+            }
         }
         async saveInvestmentDecision (step) {
             // Get userID from prior step and clear changes
@@ -1338,8 +1415,29 @@ class MyBot {
             // Read UserData from DB
             const user = await this.userDataAccessor.get(step.context, {});
 
-            // Save choice
-            user.choice = step.result;
+            // Get conversationData Object
+            const conversationData = await this.conversationDataAccessor.get(step.context, {});
+                
+            // Check if choice is valid
+            if (step.result.match(/acg/ig)) {
+                // Save choice ACG
+                user.choice = investmentData.companies[0];
+            } else if (step.result.match(/breen/ig)) {
+                // Save choice Breen
+                user.choice = investmentData.companies[1];
+            } else if (step.result.match(/plus/ig)) {
+                // Save choice Plus
+                user.choice = investmentData.companies[2];
+            } else {
+                // Invalid choice, set flag
+                conversationData.invalidChoice = true;
+                // Write conversationdata to State
+                await this.conversationDataAccessor.set(step.context, conversationData);
+                // Repeat dialog (directly reprompt)
+                return await step.replaceDialog('investmentDecision');
+            }
+            
+            
             
             // Determine, if user followed advisor or not and reply accordingly
             if (user.choice.localeCompare(investmentData.companies[user.order[1]]) == 0) {
@@ -1609,18 +1707,22 @@ class MyBot {
                 var msg = `Du hast in die **${user.choice}** investiert. Deine Investitionssumme von 3000 Geldeinheiten hat sich somit auf **4000 Geldeinheiten erhöht** und du hast **1000 Geldeinheiten Gewinn gemacht**.`;
                 await sendWithDelay(msg, step);  
                 user.payout = "Du bekommst 7000 Geldeinheiten = 7,00€ ausgezahlt.";
+                user.payoutNumber = "7";
             } else if (user.choice.localeCompare(user.win2) == 0) {
                 var msg = `Du hast in die **${user.choice}** investiert. Deine Investitionssumme von 3000 Geldeinheiten hat sich somit auf **3500 Geldeinheiten erhöht** und du hast **500 Geldeinheiten Gewinn gemacht**.`;
                 await sendWithDelay(msg, step);
                 user.payout = "Du bekommst 6500 Geldeinheiten = 6,50€ ausgezahlt.";
+                user.payoutNumber = "6,5";
             } else if (user.choice.localeCompare(user.loss1) == 0) {
                 var msg = `Du hast in die **${user.choice}** investiert. Deine Investitionssumme von 3000 Geldeinheiten hat sich somit auf **2500 Geldeinheiten verringert** und du hast **500 Geldeinheiten Verlust gemacht**.`;
                 await sendWithDelay(msg, step);
                 user.payout = "Du bekommst 5500 Geldeinheiten = 5,50€ ausgezahlt.";
+                user.payoutNumber = "5,5";
             } else if (user.choice.localeCompare(user.loss2) == 0) {
                 var msg = `Du hast in die **${user.choice}** investiert. Deine Investitionssumme von 3000 Geldeinheiten hat sich somit auf **2000 Geldeinheiten verringert** und du hast **1000 Geldeinheiten Verlust gemacht**.`;
                 await sendWithDelay(msg, step);
                 user.payout = "Du bekommst 5000 Geldeinheiten = 5,00€ ausgezahlt.";
+                user.payoutNumber = "5";
             }
 
             // Praise / Apologize 
@@ -1753,10 +1855,10 @@ class MyBot {
           
             if (treatment.rememberName == true) {
                 await delay(`Name, der Beratungsprozess ist nun wirklich abgeschlossen!`, step).then(async function() { 
-                    return await step.prompt(CONFIRM_PROMPT2, `Der Beratungsprozess ist nun wirklich abgeschlossen! Ich muss jetzt weiter und den Markt analysieren.`);
+                    return await step.prompt(CONFIRM_PROMPT2, `Der Beratungsprozess ist nun wirklich abgeschlossen! Ich muss jetzt los und den Markt analysieren.`);
                 });
             } else {
-                return await step.prompt(CONFIRM_PROMPT2, `Der Beratungsprozess ist nun wirklich abgeschlossen! Robo-Advisory System wird pausiert.`);
+                return await step.prompt(CONFIRM_PROMPT2, `Der Beratungsprozess ist nun wirklich abgeschlossen! Das Robo-Advisory System wird pausiert.`);
             }
         }
 
@@ -1862,7 +1964,7 @@ class MyBot {
                         conversationData.URLparam = turnContext.activity.membersAdded[idx].id;
 
                         // Manually set userId for Emulator use
-                        conversationData.URLparam = "1234R";
+                        conversationData.URLparam = "1234A";
                         
 
                         // Set userID
@@ -1941,7 +2043,9 @@ function delay(message, step, v) {
     try {
         // For Choice Prompts step.result.value
         if (step.result.value) { userMessage = step.result.value }
-    } catch(err) { /*console.log("Delay(): User hasn't sent choice prompt answer that needs to be read.")*/ }   
+    } catch(err) { 
+        //console.log("Delay(): User hasn't sent choice prompt answer that needs to be read.") 
+    }   
     
        
     
@@ -1991,6 +2095,7 @@ function calculateDelay(previousMessage, botResponse, mode) {
             }
         }
 
+
         // Typing
         botResponseComplexity = calculateMessageComplexity(botResponse.toString());
         if (botResponseComplexity <= 0) {
@@ -2002,11 +2107,11 @@ function calculateDelay(previousMessage, botResponse, mode) {
             typingTime = (0.75 * (Math.log(botResponseComplexity + 0.5) + 1.5)) * 1000;  // 0.5ln(x+0.5)+1.5
         }
 
+
         // Sum up both times to calculate delay, subtract existing network delay
         responseTime = (readingTime + typingTime);
         //console.log("INFO: Delay calculated: %s, %s | %s, %s -> %s", previousMessageComplexity, readingTime, botResponseComplexity, typingTime, responseTime);
 
-        
 
         // Delay should not be less than 0
         return responseTime > 0 ? responseTime : 0;
