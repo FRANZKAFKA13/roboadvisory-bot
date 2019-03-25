@@ -1690,23 +1690,23 @@ class MyBot {
             if (user.choice.localeCompare(user.win1) == 0) {
                 var msg = `Du hast in die **${user.choice}** investiert. Deine Investitionssumme von 3000 Geldeinheiten hat sich somit auf **4000 Geldeinheiten erhöht** und du hast **1000 Geldeinheiten Gewinn gemacht**.`;
                 await sendWithDelay(msg, step);  
-                user.payout = "Du bekommst 7000 Geldeinheiten = 7,00€ ausgezahlt.";
-                user.payoutNumber = "7";
+                user.payout = "Du bekommst 7000 Geldeinheiten = 7.00€ ausgezahlt.";
+                user.payoutNumber = "7.00";
             } else if (user.choice.localeCompare(user.win2) == 0) {
                 var msg = `Du hast in die **${user.choice}** investiert. Deine Investitionssumme von 3000 Geldeinheiten hat sich somit auf **3500 Geldeinheiten erhöht** und du hast **500 Geldeinheiten Gewinn gemacht**.`;
                 await sendWithDelay(msg, step);
-                user.payout = "Du bekommst 6500 Geldeinheiten = 6,50€ ausgezahlt.";
-                user.payoutNumber = "6,5";
+                user.payout = "Du bekommst 6500 Geldeinheiten = 6.50€ ausgezahlt.";
+                user.payoutNumber = "6.50";
             } else if (user.choice.localeCompare(user.loss1) == 0) {
                 var msg = `Du hast in die **${user.choice}** investiert. Deine Investitionssumme von 3000 Geldeinheiten hat sich somit auf **2500 Geldeinheiten verringert** und du hast **500 Geldeinheiten Verlust gemacht**.`;
                 await sendWithDelay(msg, step);
-                user.payout = "Du bekommst 5500 Geldeinheiten = 5,50€ ausgezahlt.";
-                user.payoutNumber = "5,5";
+                user.payout = "Du bekommst 5500 Geldeinheiten = 5.50€ ausgezahlt.";
+                user.payoutNumber = "5.50";
             } else if (user.choice.localeCompare(user.loss2) == 0) {
                 var msg = `Du hast in die **${user.choice}** investiert. Deine Investitionssumme von 3000 Geldeinheiten hat sich somit auf **2000 Geldeinheiten verringert** und du hast **1000 Geldeinheiten Verlust gemacht**.`;
                 await sendWithDelay(msg, step);
-                user.payout = "Du bekommst 5000 Geldeinheiten = 5,00€ ausgezahlt.";
-                user.payoutNumber = "5";
+                user.payout = "Du bekommst 5000 Geldeinheiten = 5.00€ ausgezahlt.";
+                user.payoutNumber = "5.00";
             }
 
             // Praise / Apologize 
