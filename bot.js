@@ -141,7 +141,7 @@ const educations = {
     },
     diplom: {
         solution: "Diplom",
-        possibilities: ['diplom', 'dipl.', 'dipl', 'diplom-', 'diplomgrad'],
+        possibilities: ['diplom', 'dipl.', 'dipl', 'diplom-', 'diplomgrad', 'diplomingenieur', 'dipl-ing.', 'diplom ing'],
     },
     staatsexamen: {
         solution: "Staatsexamen",
@@ -217,10 +217,6 @@ const yesno = {
     },
 }
 
-// Additional properties relevant for user data 
-const userDataProperties = {
-    display: {value: ""},
-}
 
 // Data for Investment decision
 const investmentData = {
@@ -712,8 +708,13 @@ class MyBot {
             // Get userID from prior step and clear changes
             const userID = step.options;
 
-            // Read UserData from DB
+            // Get UserData and ConversationData objects
             const user = await this.userDataAccessor.get(step.context, {});
+            const conversationData = await this.conversationDataAccessor.get(step.context, {});
+
+            conversationData.display = {
+                value: "",
+            }
             
 
             // If Profile not completed, end dialog and return to main menu
@@ -724,25 +725,24 @@ class MyBot {
             }
 
             // Create array from individual user data
-            var userArr = Object.values(user);
-            console.log(userArr);
+            conversationData.userArr = Object.values(user);
             var i = 0;
             // Iterate through user data and create string
             Object.keys(userData).forEach(function(key) {
-                console.log(userArr[i]);
-                userDataProperties.display.value = "" + userDataProperties.display.value  + "**" + userData[key].tag + "**" + ': ' + userArr[i].toString() + '\n';
+                console.log(conversationData.userArr[i]);
+                conversationData.display.value = "" + conversationData.display.value  + "**" + userData[key].tag + "**" + ': ' + conversationData.userArr[i].toString() + '\n';
                 i++;
             })
 
             // Replace undefined with ""
-            userDataProperties.display.value = userDataProperties.display.value.replace(/undefined/g, "");
+            conversationData.display.value = conversationData.display.value.replace(/undefined/g, "");
             // Display profile to user
             var msg = "Das sind deine Profildaten:";
             await sendWithDelay(msg, step);
-            var msg = userDataProperties.display.value;
+            var msg = conversationData.display.value;
             await sendWithDelay(msg, step);
             // Clear display string
-            userDataProperties.display.value = "";
+            conversationData.display.value = "";
 
             // Prompt user, if profile is correct
             await delay("Sind deine Daten korrekt?", step).then(async function() { 
@@ -845,24 +845,8 @@ class MyBot {
             console.log(util.inspect(user, false, null, false ));
             
 
-            var repeatTemp;
-            try {
-                repeatTemp = user.riskrepeat;
-            }
-            catch (e) {
-                repeatTemp = false;
-            }
-            
-            var roundCounterTemp = ""
-            try {
-                roundCounterTemp = user.roundCounter;
-            }
-            catch (e) {
-                roundCounterTemp = "";
-            }
-
             // Überprüfen, ob Spiel bereits läuft, falls nicht, neue Runde starten 
-            if (!roundCounterTemp) {
+            if (!user.roundCounter) {
 
                 try {
                     user.roundCounter = 1;
@@ -895,13 +879,9 @@ class MyBot {
                 await sendWithDelay(msg, step);               
             }
             
-            try {
-                var completeTemp = user.riskAssessmentComplete;
-            }
-            catch(e) {console.log("hi")}
             
             // If RiskAssessment already finished, notify user and go back to main menu
-            if (completeTemp == true) {
+            if (user.riskAssessmentComplete == true) {
                 var msg = `Dein Risikoverhalten wurde bereits ermittelt. Du bist **${user.riskDescription}**.`;
                 await sendWithDelay(msg, step);
                 if (testing == true) {
@@ -911,7 +891,7 @@ class MyBot {
                     return await step.beginDialog('investmentDecision', userID);
                 }
                 // Only present card, if round is not a repeated round
-            } else if (repeatTemp == true){
+            } else if (user.riskrepeat == true){
                 user.riskrepeat = false;
             } else {
                 // Present Adaptive Card 1-10 for gathering User Input
@@ -921,8 +901,6 @@ class MyBot {
                 });
             }
             
-            
-            
             // Write userData to DB
             await this.userDataAccessor.set(step.context, user);
         }
@@ -931,9 +909,9 @@ class MyBot {
             // Get userID from prior step and clear changes
             const userID = step.options;
 
-            // Read UserData from DB
+            // Read UserData and conversationdata from state
             const user = await this.userDataAccessor.get(step.context, {});
-
+            const conversationData = await this.conversationDataAccessor.get(step.context, {});
             
             
             // If user types in message, restart without iterating round counter
@@ -952,14 +930,13 @@ class MyBot {
             }
 
             // Retrieve choice object from Adaptive JSON Card
-            var choice = step.context.activity.value;
-            //console.log("Risk Choice Objekt");
-            //console.log(choice);
+            conversationData.choice = step.context.activity.value;
+
                         
             // Key extrahieren, Nummer abschneiden und in Zahl umwandeln (Welche Karte wurde benutzt?)
-            var roundPlayed = Object.keys(choice)[0];
+            conversationData.roundPlayed = Object.keys(conversationData.choice)[0];
             // If user doesn't make a choice, restart without iterating round counter
-            if (!roundPlayed) {
+            if (!conversationData.roundPlayed) {
                 if (treatment.civility == true) {
                     var msg = "Bitte **triff deine Auswahl** und klicke auf **OK**.";
                 } else {
@@ -972,18 +949,18 @@ class MyBot {
                 // Dialog abbrechen und Schritt wiederholen
                 return await step.replaceDialog('riskAssessment', userID);
             } else {
-                roundPlayed = parseInt(roundPlayed.substr(6,roundPlayed.length));
+                conversationData.roundPlayed = parseInt(conversationData.roundPlayed.substr(6,conversationData.roundPlayed.length));
             }
             
             console.log("Round counter bei Risk");
             console.log(user.roundCounter);
 
             // Überprüfen, ob Nutzer eine bereits verwendete Karte benutzt
-            if (roundPlayed < user.roundCounter) {
+            if (conversationData.roundPlayed < user.roundCounter) {
                 if (treatment.civility == true) {
-                    var msg = `Für Runde ${roundPlayed} hast du bereits eine Wahl getroffen, bitte neuste Runde spielen.`;
+                    var msg = `Für Runde ${conversationData.roundPlayed} hast du bereits eine Wahl getroffen, bitte neuste Runde spielen.`;
                 } else {
-                    var msg = `Für Runde ${roundPlayed} hast du bereits eine Wahl getroffen. Spiel die neuste Runde.`;
+                    var msg = `Für Runde ${conversationData.roundPlayed} hast du bereits eine Wahl getroffen. Spiel die neuste Runde.`;
                 }
                 await sendWithDelay(msg, step);
 
@@ -995,41 +972,41 @@ class MyBot {
             } else {
                 switch (user.roundCounter) {
                     case 1:
-                        choice = choice.choice1;
+                        conversationData.choice = conversationData.choice.choice1;
                         break;
                     case 2:
-                        choice = choice.choice2;
+                        conversationData.choice = conversationData.choice.choice2;
                         break;
                     case 3:
-                        choice = choice.choice3;
+                        conversationData.choice = conversationData.choice.choice3;
                         break;
                     case 4:
-                        choice = choice.choice4;
+                        conversationData.choice = conversationData.choice.choice4;
                         break;      
                     case 5:
-                        choice = choice.choice5;
+                        conversationData.choice = conversationData.choice.choice5;
                         break; 
                     case 6:
-                        choice = choice.choice6;
+                        conversationData.choice = conversationData.choice.choice6;
                         break; 
                     case 7:
-                        choice = choice.choice7;
+                        conversationData.choice = conversationData.choice.choice7;
                         break; 
                     case 8:
-                        choice = choice.choice8;
+                        conversationData.choice = conversationData.choice.choice8;
                         break; 
                     case 9:
-                        choice = choice.choice9;
+                        conversationData.choice = conversationData.choice.choice9;
                         break; 
                     case 10:
-                        choice = choice.choice10;
+                        conversationData.choice = conversationData.choice.choice10;
                         break; 
                 }
                 
             }
 
             // If user didn't make choice, reprompt
-            if (choice.localeCompare("Bitte wählen") == 0) {
+            if (conversationData.choice.localeCompare("Bitte wählen") == 0) {
                 if (treatment.civility == true) {
                     var msg = "Du hast keine eindeutige Wahl getroffen. Bitte erneut wählen.";
                 } else {
@@ -1046,17 +1023,17 @@ class MyBot {
             if (!user.riskchoices) {
                 // Create array if it doesn't exist yet
                 user.riskchoices = [];
-                user.riskchoices.push(choice);
+                user.riskchoices.push(conversationData.choice);
             } else {
-                user.riskchoices.push(choice);
+                user.riskchoices.push(conversationData.choice);
             }
             // Make choice transparent for user
-            await step.context.sendActivity(`Du hast dich in **Runde ${roundPlayed}** für **Spiel ${choice}** entschieden.`);
+            await step.context.sendActivity(`Du hast dich in **Runde ${conversationData.roundPlayed}** für **Spiel ${conversationData.choice}** entschieden.`);
             
 
            
             // Repeat until all games are played or until B is played
-            if (user.roundCounter < 10 && !choice.localeCompare("A")) {
+            if (user.roundCounter < 10 && !conversationData.choice.localeCompare("A")) {
                 user.roundCounter++;
 
                 // Write userData to DB
@@ -1069,8 +1046,8 @@ class MyBot {
                 user.riskAssessmentComplete = true;
                 // Assess risk behavior based on Holt and Laury (2002)
                 // How many safe choices (A) were made by the user?
-                var safeChoices = roundPlayed - 1;
-                switch (safeChoices) {
+                conversationData.safeChoices = conversationData.roundPlayed - 1;
+                switch (conversationData.safeChoices) {
                     case 0:
                         user.riskDescription = "höchst risikoliebend";
                         break;
@@ -1247,15 +1224,15 @@ class MyBot {
                 return await step.next();
             }
 
-            var validation = await validateInput(step.result, yesno);
+            conversationData.validation = await validateInput(step.result, yesno);
 
             // If user didn't say "Yes", count it as "No"
-            if (!validation) {
-                validation = "Nein";
+            if (!conversationData.validation) {
+                conversationData.validation = "Nein";
             }
 
             // Does user ask for further information?
-            if (validation.localeCompare("Nein") == 0) {
+            if (conversationData.validation.localeCompare("Nein") == 0) {
                 if (treatment.selfReference == true) {
                     var msg = "Tut mir leid, dass ich mich nicht eindeutig ausgedrückt habe. Ich werde versuchen, es noch ein wenig besser zu erklären.";
                     await sendWithDelay(msg, step);
@@ -1303,18 +1280,18 @@ class MyBot {
             }
 
             // Create random order and save order to investmentData
-            var arr = ["0", "1", "2"];
+            conversationData.arr = ["0", "1", "2"];
             for (var i = 1; i <= 3; i++){
-                user.order.push(arr.splice(Math.floor(Math.random() * arr.length), 1)[0]);
+                user.order.push(conversationData.arr.splice(Math.floor(Math.random() * conversationData.arr.length), 1)[0]);
             }
 
             // Present Adaptive cards in a carousel in random order
-            let messageWithCarouselOfCards = MessageFactory.carousel([
+            conversationData.messageWithCarouselOfCards = MessageFactory.carousel([
                 CardFactory.adaptiveCard(factSheet[user.order[0]]),
                 CardFactory.adaptiveCard(factSheet[user.order[1]]),
                 CardFactory.adaptiveCard(factSheet[user.order[2]]),
             ],"Hier die Unternehmensdaten. Nimm dir ausreichend Zeit, diese zu lesen. T GE steht für tausend Geldeinheiten.");
-            await step.context.sendActivity(messageWithCarouselOfCards);
+            await step.context.sendActivity(conversationData.messageWithCarouselOfCards);
 
             // Write userData to DB
             await this.userDataAccessor.set(step.context, user);
@@ -1618,38 +1595,36 @@ class MyBot {
 
             // Read UserData from DB
             const user = await this.userDataAccessor.get(step.context, {});
-            console.log("User in zweitem Teil von Result Dialog");
-            console.log(user);
-
+            const conversationData = await this.conversationDataAccessor.get(step.context, {});
 
             // Randomly assign stock price charts to companies
-            var arr = ["0", "1", "2", "3"];
-            var allOutcomes = ["win1", "win2", "loss1", "loss2"];
-            var outcomes = [];
-            var arrHelp = [];
+            conversationData.arr = ["0", "1", "2", "3"];
+            conversationData.allOutcomes = ["win1", "win2", "loss1", "loss2"];
+            conversationData.outcomes = [];
+            conversationData.arrHelp = [];
             // Fill arrHelp with three random entries from arr ([0,1,2,3])
             for (var i = 1; i <= 3; i++) {
-                arrHelp.push(arr.splice(Math.floor(Math.random() * arr.length), 1)[0]);
+                conversationData.arrHelp.push(conversationData.arr.splice(Math.floor(Math.random() * conversationData.arr.length), 1)[0]);
             }
             // Map random arrHelp to allOutcomes and save them in outcomes array (18 possibilities)
             for (var i = 0; i < 3; i++) {
-                outcomes.push(allOutcomes[arrHelp[i]]);
+                conversationData.outcomes.push(conversationData.allOutcomes[conversationData.arrHelp[i]]);
             };
 
             // Transform outcomes to verbal statements and save result in investmentData
-            var statements = [];
+            conversationData.statements = [];
             for (var i = 0; i < 3; i++) {
-                if (outcomes[i].localeCompare("win1") == 0) {
-                    statements[i] = `Der Wert der **${investmentData.companies[user.order[i]]}** hat sich um 33% **erhöht**.`
+                if (conversationData.outcomes[i].localeCompare("win1") == 0) {
+                    conversationData.statements[i] = `Der Wert der **${investmentData.companies[user.order[i]]}** hat sich um 33% **erhöht**.`
                     user.win1 = investmentData.companies[user.order[i]];
-                } else if (outcomes[i].localeCompare("win2") == 0) {
-                    statements[i] = `Der Wert der **${investmentData.companies[user.order[i]]}** hat sich um 17% **erhöht**.`
+                } else if (conversationData.outcomes[i].localeCompare("win2") == 0) {
+                    conversationData.statements[i] = `Der Wert der **${investmentData.companies[user.order[i]]}** hat sich um 17% **erhöht**.`
                     user.win2 = investmentData.companies[user.order[i]];
-                } else if (outcomes[i].localeCompare("loss1") == 0) {
-                    statements[i] = `Der Wert der **${investmentData.companies[user.order[i]]}** hat sich um 17% **verringert**.`
+                } else if (conversationData.outcomes[i].localeCompare("loss1") == 0) {
+                    conversationData.statements[i] = `Der Wert der **${investmentData.companies[user.order[i]]}** hat sich um 17% **verringert**.`
                     user.loss1 = investmentData.companies[user.order[i]];
-                } else if (outcomes[i].localeCompare("loss2") == 0) {
-                    statements[i] = `Der Wert der **${investmentData.companies[user.order[i]]}** hat sich um 33% **verringert**.`
+                } else if (conversationData.outcomes[i].localeCompare("loss2") == 0) {
+                    conversationData.statements[i] = `Der Wert der **${investmentData.companies[user.order[i]]}** hat sich um 33% **verringert**.`
                     user.loss2 = investmentData.companies[user.order[i]];
                 }
             }
@@ -1657,26 +1632,26 @@ class MyBot {
                     
 
             // Present stock price charts in a carousel
-            var resultChart1 = "" + investmentData.companies[user.order[0]].toLowerCase().replace(/\s/g, '') + "_" + outcomes[0];
-            var resultChart2 = "" + investmentData.companies[user.order[1]].toLowerCase().replace(/\s/g, '') + "_" + outcomes[1];
-            var resultChart3 = "" + investmentData.companies[user.order[2]].toLowerCase().replace(/\s/g, '') + "_" + outcomes[2];
+            conversationData.resultChart1 = "" + investmentData.companies[user.order[0]].toLowerCase().replace(/\s/g, '') + "_" + conversationData.outcomes[0];
+            conversationData.resultChart2 = "" + investmentData.companies[user.order[1]].toLowerCase().replace(/\s/g, '') + "_" + conversationData.outcomes[1];
+            conversationData.resultChart3 = "" + investmentData.companies[user.order[2]].toLowerCase().replace(/\s/g, '') + "_" + conversationData.outcomes[2];
 
-            let messageWithCarouselOfCharts = MessageFactory.carousel([
-                this.getStockPriceAttachment(resultChart1),
-                this.getStockPriceAttachment(resultChart2),
-                this.getStockPriceAttachment(resultChart3),
+            conversationData.messageWithCarouselOfCharts = MessageFactory.carousel([
+                this.getStockPriceAttachment(conversationData.resultChart1),
+                this.getStockPriceAttachment(conversationData.resultChart2),
+                this.getStockPriceAttachment(conversationData.resultChart3),
             ],"");
             var msg = "So haben sich die Aktienkurse der Unternehmen **relativ zu ihrem Wert von vor einem Jahr** entwickelt:";
             await sendWithDelay(msg, step);  
-            await step.context.sendActivity(messageWithCarouselOfCharts);
+            await step.context.sendActivity(conversationData.messageWithCarouselOfCharts);
 
             // Create Statement
-            var statement = "";
+            conversationData.statement = "";
             for (var i = 0; i < 3; i++) {
-                statement = "" + statement + "\n" + statements[i];
+                conversationData.statement = "" + conversationData.statement + "\n" + conversationData.statements[i];
             }
 
-            await sendWithDelay(statement, step);  
+            await sendWithDelay(conversationData.statement, step);  
 
             // Write userData to DB
             await this.userDataAccessor.set(step.context, user);
@@ -1727,12 +1702,7 @@ class MyBot {
 
             // Praise / Apologize 
             if (treatment.apologizePraise) {
-                try {
-                    var choiceTemp = user.choice;
-                }
-                catch (e) {}
-
-                if (choiceTemp.localeCompare(user.win1) == 0 || choiceTemp.localeCompare(user.win2) == 0) {
+                if (user.choice.localeCompare(user.win1) == 0 || user.choice.localeCompare(user.win2) == 0) {
                     var female = "weiblich";
                     if (female.localeCompare(user.gender) == 0) {
                         var msg = `Herzlichen Glückwunsch, **${user.name}**, zu deinem Gewinn! **Du hast dein Können als Investorin bewiesen**.`
@@ -1964,7 +1934,7 @@ class MyBot {
                         conversationData.URLparam = turnContext.activity.membersAdded[idx].id;
 
                         // Manually set userId for Emulator use
-                        conversationData.URLparam = "1234A";
+                        conversationData.URLparam = "1234R";
                         
 
                         // Set userID
