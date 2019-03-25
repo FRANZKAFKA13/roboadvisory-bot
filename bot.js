@@ -209,7 +209,7 @@ const genders = {
 const yesno = {
     yes: { 
         solution: "Ja",
-        possibilities: ['jip', 'ok', 'okay', 'oki', 'oke', 'jib', 'jap', 'yep', 'ja', 'yes', 'jop', 'jupp', 'jup', 'klar', 'si', 'oui', 'klaro', 'jaha', 'jaa', 'ya', 'yup', 'yas'],
+        possibilities: ['jip', 'ok', 'okay', 'oki', 'oke', 'jib', 'jap', 'yep', 'ja', 'yes', 'jop', 'jupp', 'jup', 'klar', 'si', 'oui', 'klaro', 'jaha', 'jaa', 'ya', 'yup', 'yas', 'jo'],
     },
     no: {
         solution: "Nein",
