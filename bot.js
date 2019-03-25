@@ -1290,7 +1290,7 @@ class MyBot {
                 CardFactory.adaptiveCard(factSheet[user.order[0]]),
                 CardFactory.adaptiveCard(factSheet[user.order[1]]),
                 CardFactory.adaptiveCard(factSheet[user.order[2]]),
-            ],"Hier die Unternehmensdaten. Nimm dir ausreichend Zeit, diese zu lesen. T GE steht für tausend Geldeinheiten.");
+            ],"Hier die Unternehmensdaten. Nimm dir ausreichend Zeit, diese zu lesen. \n T GE steht für tausend Geldeinheiten.");
             await step.context.sendActivity(conversationData.messageWithCarouselOfCards);
 
             // Write userData to DB
