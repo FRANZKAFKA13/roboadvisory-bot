@@ -1,0 +1,749 @@
+---
+title: "R Code for Robo-Advisory Chatbot Experiment Analysis"
+author: "Carsten Granig"
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+---
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+## Preparation: Package Import
+
+The following code imports all packages required for this script.
+```{r, message=FALSE}
+library(dplyr)
+library(openxlsx)
+library(aod)
+library(ggplot2)
+library(pracma)
+library(aod)
+library(ggpubr)
+library(fastDummies)
+library(knitr)
+library(broom)
+library(car)
+library(stargazer)
+library(lavaan)
+library(semPlot)
+library(semTools)
+```
+
+## Part 1: Data Import
+
+In this part, required data is imported from the exports of LimeSurvey and the Robo-Advisory Chatbot.
+
+### 1.1 LimeSurvey Data
+
+In the following, the CSV export form LimeSurvey is imported and arranged in a data frame.
+\
+\
+**Load the CSV file into a data frame**
+```{r, message=FALSE}
+dataLSRaw = read.csv2("dataExperiment.csv", sep = ",")
+```
+\
+**Save required data and modify if necessary**
+
+Add Survey ID
+```{r, message=FALSE}
+SurveyID = dataLSRaw$id
+```
+
+Add Group Factors
+```{r, message=FALSE}
+Group = dataLSRaw$randnumber
+GroupFactor = ifelse(Group == 1, "LOW", ifelse(Group == 2, "MED", ifelse(Group == 3, "HIGH", "")))
+GroupFactor = cbind.data.frame(GroupFactor)
+GroupFactorRev = ifelse(Group == 1, "1_LOW", ifelse(Group == 2, "2_MED", ifelse(Group == 3, "3_HIGH", "")))
+GroupFactorRev = cbind.data.frame(GroupFactorRev)
+```
+
+Add Anthropomorphism
+```{r, message=FALSE}
+AnthropomorphismAllMeasures = cbind.data.frame(ANPO1 = dataLSRaw$Anthropomorphism.HL1., ANPO2 = dataLSRaw$Anthropomorphism.HL2., ANPO3 = dataLSRaw$Anthropomorphism.HL3., ANPO4 = dataLSRaw$Anthropomorphism.HL4., ANPO5 = dataLSRaw$Anthropomorphism.HL5., ANPO6 = dataLSRaw$Anthropomorphism.HL6., ANPO7 = dataLSRaw$Anthropomorphism.HL7.)
+
+Anthropomorphism06Measures = cbind.data.frame(ANPO2 = dataLSRaw$Anthropomorphism.HL2., ANPO3 = dataLSRaw$Anthropomorphism.HL3., ANPO4 = dataLSRaw$Anthropomorphism.HL4., ANPO5 = dataLSRaw$Anthropomorphism.HL5., ANPO6 = dataLSRaw$Anthropomorphism.HL6., ANPO7 = dataLSRaw$Anthropomorphism.HL7.)
+
+AnthropomorphismLAVAANMeasures = cbind.data.frame(ANPO3 = dataLSRaw$Anthropomorphism.HL3., ANPO4 = dataLSRaw$Anthropomorphism.HL4., ANPO5 = dataLSRaw$Anthropomorphism.HL5.)
+
+AnthropomorphismAllMeasureMean = rowMeans(AnthropomorphismAllMeasures)
+
+Anthropomorphism06MeasureMean = rowMeans(Anthropomorphism06Measures)
+
+AnthropomorphismLAVAANMeasureMean = rowMeans(AnthropomorphismLAVAANMeasures)
+```
+
+Add Social Presence
+```{r, message=FALSE}
+SocialPresenceAllMeasures = cbind.data.frame(SP1 = dataLSRaw$SocialPresence.SP1., SP2 = dataLSRaw$SocialPresence.SP2., SP3 = dataLSRaw$SocialPresence.SP3., SP4 = dataLSRaw$SocialPresence.SP4., SP5 = dataLSRaw$SocialPresence.SP5.)
+
+SocialPresence06Measures = cbind.data.frame(SP1 = dataLSRaw$SocialPresence.SP1., SP2 = dataLSRaw$SocialPresence.SP2., SP3 = dataLSRaw$SocialPresence.SP3., SP4 = dataLSRaw$SocialPresence.SP4., SP5 = dataLSRaw$SocialPresence.SP5.)
+
+SocialPresence07Measures = cbind.data.frame(SP1 = dataLSRaw$SocialPresence.SP1., SP3 = dataLSRaw$SocialPresence.SP3., SP4 = dataLSRaw$SocialPresence.SP4., SP5 = dataLSRaw$SocialPresence.SP5.)
+
+SocialPresenceAllMeasureMean = rowMeans(SocialPresenceAllMeasures)
+
+SocialPresence06MeasureMean = rowMeans(SocialPresence06Measures)
+
+SocialPresence07MeasureMean = rowMeans(SocialPresence07Measures)
+```
+
+Add Trusting Beliefs - Benevolence
+```{r, message=FALSE} 
+TrustBenevolenceAllMeasures = cbind.data.frame(TI_B1 = dataLSRaw$Trust.TRUST1., TI_B2 = dataLSRaw$Trust.TRUST2., TI_B3 = dataLSRaw$Trust.TRUST3.)
+
+TrustBenevolence06Measures = cbind.data.frame(TI_B1 = dataLSRaw$Trust.TRUST1., TI_B2 = dataLSRaw$Trust.TRUST2., TI_B3 = dataLSRaw$Trust.TRUST3.)
+
+TrustBenevolence07Measures = cbind.data.frame(TI_B1 = dataLSRaw$Trust.TRUST1., TI_B2 = dataLSRaw$Trust.TRUST2.)
+
+TrustBenevolenceAllMeasureMean = rowMeans(TrustBenevolenceAllMeasures)
+
+TrustBenevolence06MeasureMean = rowMeans(TrustBenevolence06Measures)
+
+TrustBenevolence07MeasureMean = rowMeans(TrustBenevolence07Measures)
+```
+Add Trusting Beliefs - Integrity
+```{r, message=FALSE} 
+TrustIntegrityAllMeasures = cbind.data.frame(TI_I1 = dataLSRaw$Trust.TRUST4., TI_I2 = dataLSRaw$Trust.TRUST5., TI_I3 = dataLSRaw$Trust.TRUST6., TI_I4 = dataLSRaw$Trust.TRUST7.)
+
+TrustIntegrity06Measures = cbind.data.frame(TI_I1 = dataLSRaw$Trust.TRUST4., TI_I2 = dataLSRaw$Trust.TRUST5., TI_I3 = dataLSRaw$Trust.TRUST6., TI_I4 = dataLSRaw$Trust.TRUST7.)
+
+TrustIntegrity07Measures = cbind.data.frame(TI_I1 = dataLSRaw$Trust.TRUST4., TI_I2 = dataLSRaw$Trust.TRUST5., TI_I4 = dataLSRaw$Trust.TRUST7.)
+
+TrustIntegrityAllMeasureMean = rowMeans(TrustIntegrityAllMeasures)
+
+TrustIntegrity06MeasureMean = rowMeans(TrustIntegrity06Measures)
+
+TrustIntegrity07MeasureMean = rowMeans(TrustIntegrity07Measures)
+
+```
+Add Trusting Beliefs - Competence
+```{r, message=FALSE} 
+TrustCompetenceAllMeasures = cbind.data.frame(TI_C1 = dataLSRaw$Trust.TRUST8., TI_C2 = dataLSRaw$Trust.TRUST9., TI_C3 = dataLSRaw$Trust.TRUST10., TI_C4 = dataLSRaw$Trust.TRUST11.)
+
+TrustCompetence06Measures = cbind.data.frame(TI_C1 = dataLSRaw$Trust.TRUST8., TI_C2 = dataLSRaw$Trust.TRUST9., TI_C3 = 
+dataLSRaw$Trust.TRUST10., TI_C4 = dataLSRaw$Trust.TRUST11.)
+
+TrustCompetence07Measures = cbind.data.frame(TI_C1 = dataLSRaw$Trust.TRUST8., TI_C2 = dataLSRaw$Trust.TRUST9., TI_C3 = 
+dataLSRaw$Trust.TRUST10.)
+
+TrustCompetenceAllMeasureMean = rowMeans(TrustCompetenceAllMeasures)
+
+TrustCompetence06MeasureMean = rowMeans(TrustCompetence06Measures)
+
+TrustCompetence07MeasureMean = rowMeans(TrustCompetence07Measures)
+```
+Combine the three Trusting Beliefs by taking the mean 
+```{r, message=FALSE} 
+TrustAllAllMeasures = cbind.data.frame(TrustBenevolenceAllMeasures, TrustCompetenceAllMeasures, TrustIntegrityAllMeasures)
+TrustAll06Measures = cbind.data.frame(TrustBenevolence06Measures, TrustCompetence06Measures, TrustIntegrity06Measures)
+TrustAll07Measures = cbind.data.frame(TrustBenevolence07Measures, TrustCompetence07Measures, TrustIntegrity07Measures)
+TrustAllAllMeasureMean = rowMeans(TrustAllAllMeasures)
+TrustAll06MeasureMean = rowMeans(TrustAll06Measures)
+TrustAll07MeasureMean = rowMeans(TrustAll07Measures)
+```
+
+Add Interactional Enjoyment 
+```{r, message=FALSE}
+PerceivedInteractionalEnjoymentAllMeasures = cbind.data.frame(PIE1 = dataLSRaw$InteractionalEnjoy.ENJ1., PIE2 = dataLSRaw$InteractionalEnjoy.ENJ2., PIE3 = dataLSRaw$InteractionalEnjoy.ENJ3., PIE4 = dataLSRaw$InteractionalEnjoy.ENJ4.)
+
+PerceivedInteractionalEnjoymentAllMeasureMean = rowMeans(PerceivedInteractionalEnjoymentAllMeasures)
+
+```
+
+Add Perceived  Enjoyment
+```{r, message=FALSE}
+PerceivedEnjoymentAllMeasures = cbind.data.frame(PE1 = dataLSRaw$InteractionalEnjoy.PE1., PE2 = dataLSRaw$InteractionalEnjoy.PE2., PE3 = dataLSRaw$InteractionalEnjoy.PE3., PE4 = dataLSRaw$InteractionalEnjoy.PE4., PE5 = dataLSRaw$InteractionalEnjoy.PE5.)
+
+PerceivedEnjoyment06Measures = cbind.data.frame(PE1 = dataLSRaw$InteractionalEnjoy.PE1., PE2 = dataLSRaw$InteractionalEnjoy.PE2., PE3 = dataLSRaw$InteractionalEnjoy.PE3., PE4 = dataLSRaw$InteractionalEnjoy.PE4., PE5 = dataLSRaw$InteractionalEnjoy.PE5.)
+
+PerceivedEnjoyment07Measures = cbind.data.frame(PE1 = dataLSRaw$InteractionalEnjoy.PE1., PE2 = dataLSRaw$InteractionalEnjoy.PE2., PE4 = dataLSRaw$InteractionalEnjoy.PE4., PE5 = dataLSRaw$InteractionalEnjoy.PE5.)
+
+PerceivedEnjoymentAllMeasureMean = rowMeans(PerceivedEnjoymentAllMeasures)
+
+PerceivedEnjoyment06MeasureMean = rowMeans(PerceivedEnjoyment06Measures)
+
+PerceivedEnjoyme07MeasureMean = rowMeans(PerceivedEnjoyment07Measures)
+```
+
+Add Perceived Ease of Use
+```{r, message=FALSE}
+PerceivedEaseOfUseAllMeasures = cbind.data.frame(PEOU1 = dataLSRaw$EaseOfUse.EASE1., PEOU2 = dataLSRaw$EaseOfUse.EASE2., PEOU3 = dataLSRaw$EaseOfUse.EASE3., PEOU4 = dataLSRaw$EaseOfUse.EASE4., PEOU5 = dataLSRaw$EaseOfUse.EASE5., PEOU6 = dataLSRaw$EaseOfUse.EASE6.)
+
+PerceivedEaseOfUseAllMeasureMean = rowMeans(PerceivedEaseOfUseAllMeasures)
+```
+
+Add Perceived Usefulness
+```{r, message=FALSE}
+PerceivedUsefulnessAllMeasures = cbind.data.frame(PU1 = dataLSRaw$PerceivedUsefulness.USE1., PU2 = dataLSRaw$PerceivedUsefulness.USE2., PU3 = dataLSRaw$PerceivedUsefulness.USE3., PU4 = dataLSRaw$PerceivedUsefulness.USE4., PU5 = dataLSRaw$PerceivedUsefulness.USE5., PU6 = dataLSRaw$PerceivedUsefulness.USE6.)
+
+PerceivedUsefulnessAllMeasureMean = rowMeans(PerceivedUsefulnessAllMeasures)
+
+```
+
+Add Perceived Intention to Use
+```{r, message=FALSE}
+IntentionToUseAllMeasures = cbind.data.frame(IU1 = dataLSRaw$IntentionToUse.UI1., IU2 = dataLSRaw$IntentionToUse.UI2., IU3 = dataLSRaw$IntentionToUse.UI3., IU4 = dataLSRaw$IntentionToUse.UI4., IU5 = dataLSRaw$IntentionToUse.UI5., IU6 = dataLSRaw$IntentionToUse.UI6.)
+
+IntentionToUse06Measures = cbind.data.frame(IU1 = dataLSRaw$IntentionToUse.UI1., IU2 = dataLSRaw$IntentionToUse.UI2., IU3 = dataLSRaw$IntentionToUse.UI3., IU4 = dataLSRaw$IntentionToUse.UI4., IU5 = dataLSRaw$IntentionToUse.UI5.)
+
+IntentionToUse07Measures = cbind.data.frame(IU1 = dataLSRaw$IntentionToUse.UI1., IU2 = dataLSRaw$IntentionToUse.UI2., IU3 = dataLSRaw$IntentionToUse.UI3., IU4 = dataLSRaw$IntentionToUse.UI4., IU5 = dataLSRaw$IntentionToUse.UI5.)
+
+IntentionToUseAllMeasureMean = rowMeans(IntentionToUseAllMeasures)
+
+IntentionToUse06MeasureMean = rowMeans(IntentionToUse06Measures)
+
+IntentionToUse07MeasureMean = rowMeans(IntentionToUse07Measures)
+```
+
+Add Sociability
+```{r, message=FALSE}
+SociabilityAllMeasures = cbind.data.frame(SOB1 = dataLSRaw$Moderators.SOB1., SOB2 = dataLSRaw$Moderators.SOB2., SOB3 = dataLSRaw$Moderators.SOB3., SOB4 = dataLSRaw$Moderators.SOB4., SOB5 = dataLSRaw$Moderators.SOB5.)
+
+Sociability06Measures = cbind.data.frame(SOB1 = dataLSRaw$Moderators.SOB1., SOB2 = dataLSRaw$Moderators.SOB2.,  SOB4 = dataLSRaw$Moderators.SOB4., SOB5 = dataLSRaw$Moderators.SOB5.)
+
+SociabilityAllMeasureMean = rowMeans(SociabilityAllMeasures)
+
+Sociability06MeasureMean = rowMeans(Sociability06Measures)
+```
+
+Add Disposition to Trust in Technology
+```{r, message=FALSE}
+TrustInTechnologyAllMeasures = cbind.data.frame(TIT1 = dataLSRaw$Moderators.TT1., TIT2 = dataLSRaw$Moderators.TT2., TIT3 = dataLSRaw$Moderators.TT3.)
+
+TrustInTechnologyAllMeasureMean = rowMeans(TrustInTechnologyAllMeasures)
+```
+
+Add NPS
+```{r, message=FALSE}
+NPS = cbind.data.frame(NPS = dataLSRaw$NetPromoterScore.NPS.)
+```
+
+Add User Satisfaction
+```{r, message=FALSE}
+SatisfactionAllMeasures = cbind.data.frame(SAT1 = dataLSRaw$UserSatisfaction.SAT1., SAT2 = dataLSRaw$UserSatisfaction.SAT2., SAT3 = dataLSRaw$UserSatisfaction.SAT3., SAT4 = dataLSRaw$UserSatisfaction.SAT4., SAT5 = dataLSRaw$UserSatisfaction.SAT5., SAT6 = dataLSRaw$UserSatisfaction.SAT6., SAT7 = dataLSRaw$UserSatisfaction.SAT7., SAT8 = dataLSRaw$UserSatisfaction.SAT8.)
+
+SatisfactionAllMeasureMean = rowMeans(SatisfactionAllMeasures)
+```
+
+Add Risk Factor from Survey
+```{r, message=FALSE}
+RiskAllMeasures = cbind.data.frame(RiskSur2 = dataLSRaw$Risk.R2., RiskSur3 = dataLSRaw$Risk.R3., RiskSur5 = dataLSRaw$Risk.R5.)
+
+RiskAllMeasureMean = rowMeans(RiskAllMeasures)
+
+RiskGambleAllMeasures = cbind.data.frame(RiskSur1_G = dataLSRaw$Risk.R1., RiskSur5_G = dataLSRaw$Risk.R5., RiskSur6_G = dataLSRaw$Risk.R6.)
+RiskGambleAllMeasureMean = rowMeans(RiskGambleAllMeasures)
+
+Risk10PercentAllMeasures = cbind.data.frame(RiskSur2_T = dataLSRaw$Risk.R2., RiskSur3_T = dataLSRaw$Risk.R3., RiskSur4_t = dataLSRaw$Risk.R4.)
+Risk10PercentAllMeasureMean = rowMeans(Risk10PercentAllMeasures)
+
+RiskSurveyMean = rowMeans(cbind.data.frame(RiskAllMeasureMean))
+
+RiskSurveyFactor = as.factor(ifelse(RiskSurveyMean < 2, "LOW", ifelse(RiskSurveyMean < 4, "MED", "HIGH")))
+RiskSurveyFactor = cbind.data.frame(RiskSurveyFactor)
+```
+
+Add Chatbot and Robo Advisory Experience
+```{r, message=FALSE}
+ChatbotExperience = cbind.data.frame(ChatbotExperience = dataLSRaw$Experience.EC.)
+ChatbotExpFactor = as.factor(ifelse(ChatbotExperience < 2, "Novice", "Experienced"))
+ChatbotExpFactor = cbind.data.frame(ChatbotExpFactor)
+
+RoboAdvisorExperience = cbind.data.frame(RoboExperience = dataLSRaw$Experience.ER.)
+RoboExpFactor = as.factor(ifelse(RoboAdvisorExperience < 2, "Novice", "Experienced"))
+RoboExpFactor = cbind.data.frame(RoboExpFactor)
+```
+
+Add Attention Checks
+```{r, message=FALSE}
+AttentionCheck1 = cbind.data.frame(AttentionCheck1 = dataLSRaw$Trust.AC1.)
+AttentionCheck2 = cbind.data.frame(AttentionCheck2 = dataLSRaw$EaseOfUse.AC2.)
+AttentionCheck3 = cbind.data.frame(AttentionCheck3 = dataLSRaw$Moderators.AC3.)
+
+AttentionCheckFails = cbind.data.frame(ifelse(AttentionCheck1 == 7, 0, 1), ifelse(AttentionCheck2 == 4, 0, 1), ifelse(AttentionCheck3 ==1, 0, 1))
+
+AttentionCheckFailSum = rowSums(AttentionCheckFails)
+```
+
+Add Manipulation Checks
+```{r, message=FALSE}
+ManipChatbotName = cbind.data.frame(ChatbotName = dataLSRaw$ManipulationCheck1)
+
+ManipPerceivedResponseTime = cbind.data.frame(PerceivedResponseTime = dataLSRaw$ManipulationCheck2.SQ001.)
+
+ManipPerceivedGraphicalMessagePreperation = cbind.data.frame(ManipPerceivedGraphicalMessagePreperation = dataLSRaw$ManipulationCheck3.MC3.)
+
+ManipPerceivedGraphicalMessagePreperation = ifelse(ManipPerceivedGraphicalMessagePreperation == "A1", 1, 
+                                            ifelse(ManipPerceivedGraphicalMessagePreperation == "A2", 2, 
+                                            ifelse(ManipPerceivedGraphicalMessagePreperation == "A3", 3,  
+                                            ifelse(ManipPerceivedGraphicalMessagePreperation == "A4", 4,
+                                            ifelse(ManipPerceivedGraphicalMessagePreperation == "A5", 5,
+                                            ifelse(ManipPerceivedGraphicalMessagePreperation =="A6",  6,        ifelse(ManipPerceivedGraphicalMessagePreperation == "A7", 7,0)))))))
+
+ManipChatbotGender = cbind.data.frame(ChatbotGender = dataLSRaw$ManipulationCheck4)
+
+ManipTypingIndicator = cbind.data.frame(TypingIndicator = dataLSRaw$ManipulationCheck5)
+
+
+```
+
+Add Financial Literacy
+```{r, message=FALSE}
+FinancialLiteracyAllMeasures = cbind.data.frame(FinLite1 = dataLSRaw$FinancialLiteracy1, FinLite2 = dataLSRaw$FinancialLiteracy2, FinLite3 = dataLSRaw$FinancialLiteracy3)
+
+FinLite1Fail = ifelse(FinancialLiteracyAllMeasures$FinLite1 == "FL1A3", 0, 1)
+FinLite2Fail = ifelse(FinancialLiteracyAllMeasures$FinLite2 == "FL2A1", 0, 1)
+FinLite3Fail = ifelse(FinancialLiteracyAllMeasures$FinLite3 == "FL3A2", 0, 1)
+FinLiteFailSum = FinLite1Fail + FinLite2Fail + FinLite3Fail
+
+FinancialLiteracyFactor = as.factor(ifelse(FinLiteFailSum == 1, "MED", ifelse(FinLiteFailSum == 2, "LOW", ifelse(FinLiteFailSum == 3, "NONE", "HIGH"))))
+
+FinancialLiteracyFactor = cbind.data.frame(FinancialLiteracyFactor)
+```
+
+**Adding data to the data frame**
+\
+Different data frames are built in order to be able to work with data corresponding to different factor loadings
+```{r, message=FALSE}
+dataImportAll = cbind.data.frame(SurveyID, Group, GroupFactorRev, SocialPresenceAllMeasureMean, TrustBenevolenceAllMeasureMean, TrustIntegrityAllMeasureMean, TrustCompetenceAllMeasureMean, PerceivedEnjoymentAllMeasureMean, PerceivedInteractionalEnjoymentAllMeasureMean, PerceivedEaseOfUseAllMeasureMean, PerceivedUsefulnessAllMeasureMean, IntentionToUseAllMeasureMean, SociabilityAllMeasureMean, AnthropomorphismAllMeasureMean, TrustInTechnologyAllMeasureMean, AttentionCheckFailSum, ManipChatbotName, ManipPerceivedResponseTime, ManipPerceivedGraphicalMessagePreperation, ManipChatbotGender, ManipTypingIndicator, NPS, SatisfactionAllMeasureMean, RiskSurveyFactor, ChatbotExpFactor, RoboExpFactor, RiskAllMeasureMean, RiskGambleAllMeasureMean, Risk10PercentAllMeasureMean, FinancialLiteracyFactor)
+
+dataImport06 = cbind.data.frame(SurveyID, Group, GroupFactorRev, SocialPresence06MeasureMean, TrustAll06MeasureMean, TrustBenevolence06MeasureMean, TrustIntegrity06MeasureMean, TrustCompetence06MeasureMean, PerceivedEnjoyment06MeasureMean, PerceivedInteractionalEnjoymentAllMeasureMean, PerceivedEaseOfUseAllMeasureMean, PerceivedUsefulnessAllMeasureMean, IntentionToUse06MeasureMean, Sociability06MeasureMean, AnthropomorphismAllMeasureMean, Anthropomorphism06MeasureMean, AnthropomorphismLAVAANMeasureMean, TrustInTechnologyAllMeasureMean, AttentionCheckFailSum, ManipChatbotName, ManipPerceivedResponseTime, ManipPerceivedGraphicalMessagePreperation, ManipChatbotGender, ManipTypingIndicator, NPS, SatisfactionAllMeasureMean, RiskSurveyFactor, ChatbotExpFactor, RoboExpFactor, RiskAllMeasureMean, RiskGambleAllMeasureMean, Risk10PercentAllMeasureMean, FinancialLiteracyFactor)
+
+dataImport07 = cbind.data.frame(SurveyID, Group, GroupFactorRev, SocialPresence07MeasureMean, TrustBenevolence07MeasureMean, TrustIntegrity07MeasureMean, TrustCompetence07MeasureMean, PerceivedEnjoymentAllMeasureMean, PerceivedInteractionalEnjoymentAllMeasureMean, PerceivedEaseOfUseAllMeasureMean, PerceivedUsefulnessAllMeasureMean, IntentionToUse07MeasureMean, SociabilityAllMeasureMean, AnthropomorphismLAVAANMeasureMean, TrustInTechnologyAllMeasureMean, AttentionCheckFailSum, ManipChatbotName, ManipPerceivedResponseTime, ManipPerceivedGraphicalMessagePreperation, ManipChatbotGender, ManipTypingIndicator, NPS, SatisfactionAllMeasureMean, RiskSurveyFactor, ChatbotExpFactor, RoboExpFactor, RiskAllMeasureMean, RiskGambleAllMeasureMean, Risk10PercentAllMeasureMean, FinancialLiteracyFactor)
+
+dataImportRaw = cbind.data.frame(SurveyID, Group, GroupFactorRev, SocialPresenceAllMeasures, TrustBenevolenceAllMeasures, TrustIntegrityAllMeasures, TrustCompetenceAllMeasures, PerceivedEnjoymentAllMeasures, PerceivedUsefulnessAllMeasures, PerceivedInteractionalEnjoymentAllMeasures, PerceivedEaseOfUseAllMeasures, IntentionToUseAllMeasures, SociabilityAllMeasures, AnthropomorphismAllMeasures, TrustInTechnologyAllMeasures, AttentionCheckFailSum, ManipChatbotName, ManipPerceivedResponseTime, ManipPerceivedGraphicalMessagePreperation, ManipChatbotGender, ManipTypingIndicator, NPS, SatisfactionAllMeasures, ChatbotExperience, RoboAdvisorExperience, RiskAllMeasures, RiskGambleAllMeasures, Risk10PercentAllMeasures)
+
+```
+
+Add results for Manipulation Checks
+```{r, message=FALSE}
+dataImport06$TypingIndicatorCorrect = ifelse(dataImport06$TypingIndicator == 4 & dataImport06$Group %in% c(1,2), 1, ifelse(dataImport06$TypingIndicator == 1 & dataImport06$Group == 3, 1, 0))
+dataImport06$TypingIndicatorCorrect = ifelse(is.na(dataImport06$TypingIndicator), 0, dataImport06$TypingIndicatorCorrect)
+
+dataImport06$ChatbotNameCorrect = ifelse(dataImport06$ChatbotName %in% c(4,5) & dataImport06$Group %in% c(1,2), 1, ifelse(dataImport06$ChatbotName == 3 & dataImport06$Group == 3, 1, 0))
+dataImport06$ChatbotNameCorrect = ifelse(is.na(dataImport06$ChatbotName), 0, dataImport06$ChatbotNameCorrect)
+
+dataImport06$ChatbotGenderCorrect = ifelse(dataImport06$ChatbotGender %in% c("A3","A4") & dataImport06$Group %in% c(1,2), 1, ifelse(dataImport06$ChatbotGender == "A1" & dataImport06$Group == 3, 1, 0))
+dataImport06$ChatbotGenderCorrect = ifelse(is.na(dataImport06$ChatbotGenderCorrect), 0, dataImport06$ChatbotGenderCorrect)
+
+dataImport06$ManipulationChecksCorrect = dataImport06$TypingIndicatorCorrect + dataImport06$ChatbotNameCorrect + dataImport06$ChatbotGenderCorrect
+dataImport06$ManipulationChecksCorrect2 = dataImport06$TypingIndicatorCorrect + dataImport06$ChatbotNameCorrect 
+```
+  
+### 1.2 Robo Advisory Chatbot Data
+
+In the following, the export from the Robo Advisory Chatbot is imported and arranged in a data frame.
+```{r, message=FALSE}
+dataBotRaw <- read.xlsx(xlsxFile = "Bot Data.xlsx", sheet = 1, skipEmptyRows = FALSE)
+
+dataBot = dataBotRaw %>% 
+  dplyr::select(LimeSurveyID, Alter, Geschlecht, Risk.Round.Counter, `Order[0]`, `Order[1]`, `Order[2]`, Bot.Empfehlung, Investment.Wahl, FollowAdvice, `Bezahlung`) %>%
+  rename(SurveyID = LimeSurveyID, Gender = Geschlecht, RiskBot = Risk.Round.Counter, OrderL1 = `Order[0]`, OrderL2 = `Order[1]`, OrderL3 = `Order[2]`, Invest_Sug =  Bot.Empfehlung, Invest_Dec = Investment.Wahl, Invest_Followed = FollowAdvice, Payment = `Bezahlung`) %>%
+  mutate(SurveyID = as.numeric(SurveyID))
+
+dataBot = dataBot %>%
+  mutate(ProfitMade = ifelse(Payment > 6, TRUE, FALSE))
+
+dataBot$RiskBot = strtoi(dataBot$RiskBot)
+
+dataBot = dataBot %>%
+  mutate(RiskBotFactor = ifelse(dataBot$RiskBot < 3, "HIGH", ifelse(dataBot$RiskBot < 6, "MED", "LOW")))
+```
+
+Gender Dummy variables are created
+```{r, message=FALSE}
+dataBot$Gender[dataBot$Gender == "divers"] <- "male"
+dataBot$Gender[dataBot$Gender == "mÃÂ¤nnlich"] <- "male"
+dataBot$Gender[dataBot$Gender == "weiblich"] <- "female"
+
+dataBot = dataBot %>%
+  mutate(GenderFemale_Dummy =  ifelse(dataBot$Gender == "female", 1, 0)) %>%
+  mutate(GenderMale_Dummy =  ifelse(dataBot$Gender == "male", 1, 0))
+```
+
+### 1.3 Merge both Data Sets
+
+Data sets are merged by SurveyIDs
+```{r, message=FALSE}
+dataImportAll = left_join(dataImportAll, dataBot, by = "SurveyID")
+dataImport06 = left_join(dataImport06, dataBot, by = "SurveyID")
+dataImport07 = left_join(dataImport07, dataBot, by = "SurveyID")
+dataImportRaw = left_join(dataImportRaw, dataBot, by = "SurveyID")
+```
+
+
+
+Data is written to file and temporary data is deleted from the R environment
+```{r, message=FALSE}
+write.csv2(dataImport06, file = "dataAll06.csv")
+
+rm(list= ls()[!(ls() %in% c('dataImport06','dataImport07','dataImportAll','dataImportRaw','dataImportRawAndMeans'))])
+```
+
+
+## Part 2: Data Preprocessing
+
+In the following, the imported data is preprocessed before the analysis can start. Since the analysis was only conducted with measures that have a factor loading of 0.6 or higher, only the dataset `dataImport06` will be used in the following.
+
+### 2.1 Data Cleansing
+
+All users that failed at least two attention checks are removed from the datasets.
+```{r, message=FALSE}
+data06_Processed = dataImport06 %>% filter(AttentionCheckFailSum < 2)
+```
+
+All users that failed at least two manipulation checks are removed from the datasets.
+```{r, message=FALSE}
+data06_Processed = data06_Processed  %>% filter(ManipulationChecksCorrect2 > 0)
+```
+
+Participants that answered questions too quickly are removed as well.
+```{r, message=FALSE, warning=FALSE}
+dataRaw_Timing = read.csv2("dataExperiment.csv", sep = ",")
+dataRaw_Timing = dataRaw_Timing %>%
+                    dplyr::select(id, randnumber, interviewtime, groupTime857, groupTime1704, groupTime1705, groupTime1707, 
+                                  groupTime1708, groupTime1709, groupTime1017 ) %>%
+                    rename(Bot_LOW_1 = groupTime857, Bot_MED_1 = groupTime1704, Bot_HIGH_1 = groupTime1705) %>%
+                    rename(Bot_LOW_2 = groupTime1707, Bot_MED_2 = groupTime1708, Bot_HIGH_2 = groupTime1709) %>%
+                    rename(Payout = groupTime1017)
+
+dataRaw_Timing = dataRaw_Timing %>%
+                  mutate_all(funs(as.numeric(paste(.)))) %>%
+                  mutate_all(funs(replace(., which(is.na(.)), 0))) %>%
+                  mutate(ChatbotTime = Bot_LOW_1 + Bot_LOW_2 + Bot_MED_1 + Bot_MED_2 + Bot_HIGH_1 + Bot_HIGH_2 + Payout) %>%
+                  mutate(SurveyNetto = interviewtime - ChatbotTime)
+
+
+
+badIDs = dataRaw_Timing %>% filter(SurveyNetto < 300) %>% select(id)
+badIDs = dataRaw_Timing %>% filter(SurveyNetto < 300)
+data06_Processed = data06_Processed  %>% filter(!SurveyID %in% badIDs) 
+```
+
+Incomplete data records are removed.
+```{r, message=FALSE}
+data06_Processed = data06_Processed[complete.cases(data06_Processed), ] 
+```
+
+Data is written to file and temporary data is deleted from the R environment.
+```{r, message=FALSE}
+write.csv2(data06_Processed, file = "data06_Processed.csv")
+
+rm(list= ls()[!(ls() %in% c('data06_Processed','dataImportRaw'))])
+```
+
+### 2.2 Dummy Variables
+
+The data frame is already renamed since dummy variables are required in the analysis.
+```{r, message=FALSE}
+dataAnalysis06 = data06_Processed
+```
+Add dummy variables for treatment groups for linear regression models.
+```{r, message=FALSE}
+dataAnalysis06 = dataAnalysis06 %>%
+  mutate(LOW_Group_Dummy =  ifelse(dataAnalysis06$GroupFactorRev == "1_LOW", 1, 0)) %>%
+  mutate(MED_Group_Dummy =  ifelse(dataAnalysis06$GroupFactorRev == "2_MED", 1, 0)) %>%
+  mutate(HIGH_Group_Dummy =  ifelse(dataAnalysis06$GroupFactorRev == "3_HIGH", 1, 0)) 
+```
+Add dummy variables (Novice and Experienced) for experience for linear regression models.
+```{r, message=FALSE}
+dataAnalysis06 = dataAnalysis06 %>%
+  mutate(NOVICE_ChatbotExp_Dummy =  ifelse(dataAnalysis06$ChatbotExpFactor == "Novice", 1, 0)) %>%
+  mutate(EXPERT_ChatbotExp_Dummy =  ifelse(dataAnalysis06$ChatbotExpFactor == "Experienced", 1, 0)) %>%
+  mutate(NOVICE_RoboExp_Dummy =  ifelse(dataAnalysis06$RoboExpFactor == "Novice", 1, 0)) %>%
+  mutate(EXPERT_RoboExp_Dummy =  ifelse(dataAnalysis06$RoboExpFactor == "Experienced", 1, 0))
+```
+
+### 2.3 SEM Preparations
+
+Analysis Data and Raw Data are merged in order to work with SEM.
+```{r, message=FALSE}
+dataSEM = dplyr::left_join(dataAnalysis06, dataImportRaw, by = "SurveyID")
+```
+
+Make variable that determines if a user followed the chatbot's recommendation *ordered* to use in SEM.
+```{r, message=FALSE}
+dataSEM$Invest_Followed.y = ordered(dataSEM$Invest_Followed.y, levels = c("FALSE", "TRUE"))
+```
+
+## Part 3: Analysis
+
+This part covers the actual data analysis that is described and interpreted in detail in the master thesis.
+
+### 3.1 Descriptives
+
+In the following, descriptives of analyzed constructs are calculated.
+
+**Means**
+```{r, message=FALSE}
+round(mean(dataAnalysis06$TrustBenevolence06MeasureMean), digits = 3)
+round(mean(dataAnalysis06$TrustCompetence06MeasureMean), digits = 3)
+round(mean(dataAnalysis06$TrustIntegrity06MeasureMean), digits = 3)
+
+round(mean(dataAnalysis06$SocialPresence06MeasureMean), digits = 3)
+round(mean(dataAnalysis06$TrustAll06MeasureMean), digits = 3)
+round(mean(dataAnalysis06$PerceivedEnjoyment06MeasureMean), digits = 3)
+round(mean(dataAnalysis06$PerceivedUsefulnessAllMeasureMean), digits = 3)
+round(mean(dataAnalysis06$IntentionToUse06MeasureMean), digits = 3)
+```
+
+**Standard Deviations**
+```{r, message=FALSE}
+round(sd(dataAnalysis06$TrustBenevolence06MeasureMean), digits = 3)
+round(sd(dataAnalysis06$TrustCompetence06MeasureMean), digits = 3)
+round(sd(dataAnalysis06$TrustIntegrity06MeasureMean), digits = 3)
+
+round(sd(dataAnalysis06$SocialPresence06MeasureMean), digits = 3)
+round(sd(dataAnalysis06$TrustAll06MeasureMean), digits = 3)
+round(sd(dataAnalysis06$PerceivedEnjoyment06MeasureMean), digits = 3)
+round(sd(dataAnalysis06$PerceivedUsefulnessAllMeasureMean), digits = 3)
+round(sd(dataAnalysis06$IntentionToUse06MeasureMean), digits = 3)
+```
+
+
+### 3.2 Manipulation Check
+
+An ANOVA is used to check if the treatment groups have an impact on the perceived manipulated variable (Perceived Anthropomorphism).
+
+```{r, message=FALSE}
+anova_anthro_group = aov(Anthropomorphism06MeasureMean ~ GroupFactorRev, data = dataAnalysis06)
+summary(anova_anthro_group)
+```
+
+The Tukey test is applied.
+```{r, message=FALSE}
+TukeyHSD(anova_anthro_group)
+```
+
+A boxplot is created to visualize the result.
+```{r, message=FALSE}
+a = 1.2
+ggplot(dataAnalysis06, aes(x=GroupFactorRev, y=Anthropomorphism06MeasureMean)) + 
+  geom_boxplot(notch=FALSE,
+               outlier.colour="red", outlier.shape=8, outlier.size=4) +
+  labs (y = "Perceived Anthropomorphism") +
+  labs (x = "Treatment Group") +
+  scale_x_discrete(labels= c("Low", "Medium", "High")) +
+  scale_y_continuous(limits = c(0, 7)) + 
+  theme(text = element_text(size=20*a), title = element_text(size=13*a), 
+        axis.text.x = element_text(size=10*a), axis.text.y = element_text(size=10*a),
+        plot.title = element_text(size=14*a, hjust = 0.5),
+        legend.text = element_text(size=10*a))
+```
+
+The boxplot graphic is then saved in a file.
+```{r, message=FALSE}
+ggsave(filename = "R_Plots/Group_Anthro_Boxplot.png", dpi = 2000, width = 8, height = 3.64,type = "cairo")
+```
+
+### 3.3 Linear Regressions
+
+In the following, linear regressions are calculated in order to see how different variables impact the result.
+
+**Linear Regression 1: Social Presence as dependent variable**
+```{r, message=FALSE}
+regression_group_sp_2 = lm(SocialPresence06MeasureMean ~ HIGH_Group_Dummy + MED_Group_Dummy + GenderFemale_Dummy + TrustInTechnologyAllMeasureMean + FinancialLiteracyFactor + EXPERT_RoboExp_Dummy + Sociability06MeasureMean + RiskBotFactor, data = dataAnalysis06)
+output = tidy(regression_group_sp_2)
+summary(regression_group_sp_2)
+write.csv2(output, "LM_Group_SP.csv")
+```
+
+**Linear Regression 2: Social Presence as dependent variable with interaction effects**
+```{r, message=FALSE}
+regression_group_sp_2 = lm(SocialPresence06MeasureMean ~ HIGH_Group_Dummy + MED_Group_Dummy + GenderFemale_Dummy + TrustInTechnologyAllMeasureMean + FinancialLiteracyFactor + EXPERT_RoboExp_Dummy + Sociability06MeasureMean + RiskBotFactor
+                           + HIGH_Group_Dummy * GenderFemale_Dummy 
+                           , data = dataAnalysis06)
+output = tidy(regression_group_sp_2)
+summary(regression_group_sp_2)
+write.csv2(output, "LM_Group_SP_2.csv")
+```
+
+**Linear Regression 3: Social Presence as dependent variable with the effect of perceived anthropomorphism**
+```{r, message=FALSE,warning=FALSE}
+regression_group_sp_2 = lm(SocialPresence06MeasureMean ~ HIGH_Group_Dummy + MED_Group_Dummy + GenderFemale_Dummy + TrustInTechnologyAllMeasureMean + FinancialLiteracyFactor + EXPERT_RoboExp_Dummy + Sociability06MeasureMean + RiskBotFactor
+                           + Anthropomorphism06MeasureMean 
+                           , data = dataAnalysis06)
+output = tidy(regression_group_sp_2)
+summary(regression_group_sp_2)
+write.csv2(output, "LM_Group_SP_3.csv")
+```
+
+**A boxplot that visualized the distribution of perceived social presence between groups is created and saved to a file.**
+```{r, message=FALSE,warning=FALSE}
+ggplot(dataAnalysis06, aes(x=GroupFactorRev, y=SocialPresence06MeasureMean)) + 
+  geom_boxplot(notch=FALSE,
+               outlier.colour="red", outlier.shape=8, outlier.size=4) +
+  labs (y = "Perceived Social Presence") +
+  labs (x = "Treatment Group") +
+  scale_y_continuous(limits = c(0, 7)) + 
+  scale_x_discrete(labels= c("Low", "Medium", "High")) + 
+  theme(text = element_text(size=20*a), title = element_text(size=13*a), 
+        axis.text.x = element_text(size=10*a), axis.text.y = element_text(size=10*a),
+        plot.title = element_text(size=14*a, hjust = 0.5),
+        legend.text = element_text(size=10*a))
+
+ggsave(filename = "R_Plots/Group_SP_Boxplot.png", dpi = 2000, width = 8, height = 3.64,type = "cairo")
+```
+
+**The interaction effect between gender and treatment group on social presence is plotted and saved.**
+```{r, message=FALSE,warning=FALSE}
+a = 1.2 
+dataAnalysis06 %>% 
+  ggplot() +
+  aes(x = GroupFactorRev, color = Gender, group = Gender, y = SocialPresence06MeasureMean) +
+  stat_summary(fun.y = mean, geom = "point", size = 3) +
+  stat_summary(fun.y = mean, geom = "line", size = 2) +
+  ylim(2,5) +
+  labs(x = "Treatment Condition") +
+  labs (y = "Perceived Social Presence") +
+  labs (title = "Interaction Effect of Gender and Treatment \nCondition on Perceived Social Presence") +
+  scale_x_discrete(labels= c("Low", "Medium", "High")) + 
+  theme(text = element_text(size=20*a), title = element_text(size=13*a), 
+        axis.text.x = element_text(size=10*a), axis.text.y = element_text(size=10*a),
+        plot.title = element_text(size=14*a, hjust = 0.5),
+        legend.text = element_text(size=10*a))
+
+ggsave(filename = "R_Plots/SP_Gender_Interaction.png", dpi = 2000, width = 8, height = 3.64,type = "cairo")
+```
+
+### 3.4 Structural Equation Model
+
+In the following, the SEM is analyzed with lavaan.
+
+The model is set up.
+```{r, message=FALSE,warning=FALSE}
+model <- '
+  # measurement model
+    SocialPresence =~ SP1 + SP3 + SP2 + SP4 + SP5
+    TrustingBeliefs =~ TI_B1 + TI_B2 + TI_B3 + TI_C1 + TI_C2 + TI_C3 + TI_C4 + TI_I1 + TI_I2 + TI_I3 + TI_I4
+    PerceivedUsefulness =~ PU1 + PU2 + PU3 + PU4 + PU5 + PU6
+    PerceivedEnjoyment =~ PE1 + PE2 + PE3  + PE4 + PE5
+    IntentionToUse =~ IU1 + IU2 + IU3 + IU4 + IU5 
+
+    
+  # regressions
+    TrustingBeliefs ~ SocialPresence
+    PerceivedUsefulness ~ TrustingBeliefs + PerceivedEnjoyment
+    PerceivedEnjoyment ~ SocialPresence
+    IntentionToUse ~  TrustingBeliefs + PerceivedUsefulness + PerceivedEnjoyment
+    Invest_Followed.y ~ SocialPresence + TrustingBeliefs
+    
+  # residual correlations
+    
+'
+
+
+```
+
+Results for the SEM are calculated.
+```{r, message=FALSE,warning=FALSE}
+fit <- sem(model, data=dataSEM)
+summary(fit, standardized=TRUE, rsquare=TRUE, fit.measures = TRUE)
+
+
+
+inspect(fit,"r2")
+
+
+```
+
+SEM path model is visualized.
+```{r, message=FALSE,warning=FALSE}
+semPaths(fit, title = FALSE, curvePivot = TRUE)
+```
+
+
+### 3.5 Other Analyses
+
+In the following, further analyses that are described in the master's thesis are calculated. 
+
+**Linear Regression 4: Interaction effect of gender and treatment group on trusting beliefs**
+```{r, message=FALSE,warning=FALSE}
+regression_group_sp_2 = lm(TrustAll06MeasureMean ~ HIGH_Group_Dummy + MED_Group_Dummy + GenderFemale_Dummy + TrustInTechnologyAllMeasureMean + SocialPresence06MeasureMean
+                           , data = dataAnalysis06)
+summary(regression_group_sp_2)
+
+dataAnalysis06 %>% 
+  ggplot() +
+  aes(x = GroupFactorRev, color = Gender, group = Gender, y = TrustAll06MeasureMean) +
+  stat_summary(fun.y = mean, geom = "point", size = 5) +
+  stat_summary(fun.y = mean, geom = "line", size = 2) +
+  ylim(0,7) +
+  labs(x = "Treatment Condition") +
+  labs (y = "Trusting Beliefs") +
+  labs (title = "Effect of Gender and Treatment \nCondition on Trusting Beliefs") +
+  scale_x_discrete(labels= c("Low", "Medium", "High")) + 
+  theme(text = element_text(size=20*a), title = element_text(size=13*a), 
+        axis.text.x = element_text(size=10*a), axis.text.y = element_text(size=10*a),
+        plot.title = element_text(size=14*a, hjust = 0.5),
+        legend.text = element_text(size=10*a))
+```
+
+**Linear Regression 5: Effect of win or loss on NPS moderated by users' choice to follow or not**
+```{r, message=FALSE,warning=FALSE}
+regression_group_sp_2 = lm(NPS ~ HIGH_Group_Dummy + MED_Group_Dummy 
+                           + IntentionToUse06MeasureMean
+                           + ProfitMade + Invest_Followed + ProfitMade * Invest_Followed
+                           + GenderFemale_Dummy + TrustInTechnologyAllMeasureMean + EXPERT_RoboExp_Dummy + Sociability06MeasureMean + RiskBotFactor
+                           , data = dataAnalysis06)
+summary(regression_group_sp_2)
+output = tidy(regression_group_sp_2)
+write.csv2(output, "R_Models/NPS.csv")
+
+dataAnalysis06 %>% 
+  ggplot() +
+  aes(x = ProfitMade, color = Invest_Followed, group = Invest_Followed, y = NPS) +
+  stat_summary(fun.y = mean, geom = "point", size = 5) +
+  stat_summary(fun.y = mean, geom = "line", size = 2) +
+  ylim(0,10) +
+  labs(x = "Profit Made") +
+  labs (y = "NPS") +
+  #labs (title = "Effect of Gender and Treatment \nCondition on Trusting Beliefs") +
+  scale_x_discrete(labels= c("No", "Yes")) + 
+  scale_color_discrete(name = "Recommendation\nFollowed", labels = c("No", "Yes")) +
+  theme(text = element_text(size=20*a), title = element_text(size=13*a), 
+        axis.text.x = element_text(size=10*a), axis.text.y = element_text(size=10*a),
+        plot.title = element_text(size=14*a, hjust = 0.5),
+        legend.text = element_text(size=10*a),
+        legend.title = element_text(size=10*a))
+```
+
+**Linear Regression 6: Effect of win or loss on user satisfaction moderated by users' choice to follow or not**
+```{r, message=FALSE,warning=FALSE}
+regression_group_sp_2 = lm(SatisfactionAllMeasureMean ~ HIGH_Group_Dummy + MED_Group_Dummy 
+                           + IntentionToUse06MeasureMean
+                           + ProfitMade + Invest_Followed + ProfitMade * Invest_Followed
+                           + GenderFemale_Dummy + TrustInTechnologyAllMeasureMean + EXPERT_RoboExp_Dummy + Sociability06MeasureMean + RiskBotFactor
+                           , data = dataAnalysis06)
+summary(regression_group_sp_2)
+output = tidy(regression_group_sp_2)
+write.csv2(output, "R_Models/Satisfaction.csv")
+
+dataAnalysis06 %>% 
+  ggplot() +
+  aes(x = ProfitMade, color = Invest_Followed, group = Invest_Followed, y = SatisfactionAllMeasureMean) +
+  stat_summary(fun.y = mean, geom = "point", size = 5) +
+  stat_summary(fun.y = mean, geom = "line", size = 2) +
+  ylim(0,7) +
+  labs(x = "Profit Made") +
+  labs (y = "Satisfaction") +
+  #labs (title = "Effect of Gender and Treatment \nCondition on Trusting Beliefs") +
+  scale_x_discrete(labels= c("No", "Yes")) + 
+  scale_color_discrete(name = "Recommendation\nFollowed", labels = c("No", "Yes")) +
+  theme(text = element_text(size=20*a), title = element_text(size=13*a), 
+        axis.text.x = element_text(size=10*a), axis.text.y = element_text(size=10*a),
+        plot.title = element_text(size=14*a, hjust = 0.5),
+        legend.text = element_text(size=10*a),
+        legend.title = element_text(size=10*a))
+```
+
+
