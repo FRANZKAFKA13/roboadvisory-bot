@@ -29,7 +29,7 @@
     "string-similarity-js": "^2.1.2",
     "syllable": "^3.4.0",
     "util": "^0.11.1",
-    "ws": "^6.1.2",
+    "ws": "^7.4.6",
     "xhr2": "^0.1.4"
   },
   "devDependencies": {
